@@ -23,10 +23,10 @@
   --color-sun-50: #fff8e6;
   --color-coral: #f2545b;
   --color-coral-50: #fff0f0;
-  --font-display: var(--font-space-grotesk), ui-sans-serif, system-ui;
+  --font-display: var(--font-inter), ui-sans-serif, system-ui;
   --font-sans: var(--font-inter), ui-sans-serif, system-ui;
-  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
-  --font-serif: var(--font-serif), ui-serif, Georgia, serif;
+  --font-mono: var(--font-inter), ui-sans-serif, system-ui;
+  --font-serif: var(--font-inter), ui-sans-serif, system-ui;
   --color-gold: #2448d8;
   --color-ivory: #f4efe6;
 }
@@ -86,3 +86,7 @@ label {
 .lux-line { border-color: rgba(23,20,15,.1); }
 .lux-muted { color: rgba(23,20,15,.6); }
 .spot { background: radial-gradient(45% 55% at 50% 0%, rgba(47,91,255,.13) 0%, transparent 70%); }
+
+em { font-style: normal; }
+.font-serif { letter-spacing: -0.025em; font-weight: 600; }
+h1.font-serif, h2.font-serif { letter-spacing: -0.035em; }

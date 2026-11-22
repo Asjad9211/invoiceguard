@@ -20,8 +20,24 @@ export default function AskVoice({ context, vendor }: { context: unknown; vendor
   const [canListen, setCanListen] = useState(false);
   useEffect(() => { setCanListen(typeof window !== "undefined" && !!((window as unknown as Record<string, unknown>).SpeechRecognition || (window as unknown as Record<string, unknown>).webkitSpeechRecognition)); }, []);
 
-  function say(text: string) {
-    if (!speak || typeof window === "undefined" || !window.speechSynthesis) return;
+  const audio = useRef<HTMLAudioElement | null>(null);
+  async function say(text: string) {
+    if (!speak || typeof window === "undefined") return;
+    window.speechSynthesis?.cancel();
+    audio.current?.pause();
+    try {
+      const r = await fetch("/api/tts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) });
+      if (r.ok) {
+        const url = URL.createObjectURL(await r.blob());
+        audio.current = new Audio(url);
+        await audio.current.play();
+        return;
+      }
+    } catch {}
+    browserSay(text);
+  }
+  function browserSay(text: string) {
+    if (!window.speechSynthesis) return;
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
     u.lang = lang;
@@ -77,7 +93,7 @@ export default function AskVoice({ context, vendor }: { context: unknown; vendor
             <select value={lang} onChange={(e) => setLang(e.target.value)} className="ml-auto rounded-full border border-line px-2 py-1 text-[13px]" aria-label="Language">
               {LANGS.map(([c, n]) => <option key={c} value={c}>{n}</option>)}
             </select>
-            <button onClick={() => { setOpen(false); window.speechSynthesis?.cancel(); }} className="rounded-full px-2 py-1 text-slate hover:bg-paper" aria-label="Close">✕</button>
+            <button onClick={() => { setOpen(false); window.speechSynthesis?.cancel(); audio.current?.pause(); }} className="rounded-full px-2 py-1 text-slate hover:bg-paper" aria-label="Close">✕</button>
           </div>
           <div className="flex-1 space-y-3 overflow-auto p-3">
             {chat.length === 0 && (
@@ -104,7 +120,7 @@ export default function AskVoice({ context, vendor }: { context: unknown; vendor
               </button>
             )}
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={listening ? "Listening…" : "Type a question"} className="min-w-0 flex-1 rounded-full border border-line px-3 py-2" />
-            <button type="button" onClick={() => { setSpeak(!speak); window.speechSynthesis?.cancel(); }} className="rounded-full px-2 py-1 text-[12px] text-slate" aria-label="Toggle spoken answers">{speak ? "🔊" : "🔇"}</button>
+            <button type="button" onClick={() => { setSpeak(!speak); window.speechSynthesis?.cancel(); audio.current?.pause(); }} className="rounded-full px-2 py-1 text-[12px] text-slate" aria-label="Toggle spoken answers">{speak ? "🔊" : "🔇"}</button>
           </form>
         </div>
       )}

@@ -1,7 +1,7 @@
 import { askJSON, type DocInput } from "@/lib/claude";
 import type { Agreement } from "@/lib/types";
 
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 const SYSTEM = `You are InvoiceGuard, an expert. You may receive ANY commercial document (MSA, order form, rate card, SOW, proposal, email). Treat it as the agreement. If it has no pricing at all, return costItems: [] and explain in summary what is missing. You are an expert in Indian vendor agreements for usage-based services (SMS, WhatsApp, email, OTP, KYC/identity APIs, payment, cloud, SaaS).
 Your job: extract EVERY cost the customer may be charged, and surface what is ambiguous so the customer can verify invoices later.

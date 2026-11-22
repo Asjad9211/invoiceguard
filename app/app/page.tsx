@@ -35,9 +35,15 @@ async function fileToDoc(f: File): Promise<{ text?: string; pdfBase64?: string; 
 
 async function post<T>(url: string, body: unknown): Promise<T> {
   const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-  const j = await r.json();
+  const raw = await r.text();
+  let j: { error?: string } & Record<string, unknown>;
+  try {
+    j = JSON.parse(raw);
+  } catch {
+    throw new Error(r.status === 504 ? "This document took too long to read. Try again, or upload just the pricing pages." : "Something went wrong reading this document. Please try again.");
+  }
   if (!r.ok || j.error) throw new Error(j.error || "Request failed");
-  return j as T;
+  return j as unknown as T;
 }
 
 

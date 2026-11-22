@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Component, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { Agreement, CostItem, Invoice, Vendor } from "@/lib/types";
 import { checkInvoice, cliffInsight, cliffZones, costFor, fmtN, inr, round } from "@/lib/calc";
 import { gstCheck } from "@/lib/gst";
@@ -154,7 +154,16 @@ export default function Home() {
     setErr(null);
     setBusy("Reading invoice and matching lines to the agreement…");
     try {
-      const inv = await post<Invoice>("/api/invoice", { ...doc, costItems: v.agreement.costItems.map(({ id, name, unit }) => ({ id, name, unit })) });
+      const raw = await post<Invoice>("/api/invoice", { ...doc, costItems: v.agreement.costItems.map(({ id, name, unit }) => ({ id, name, unit })) });
+      const num = (n: unknown) => Number(String(n ?? 0).replace(/[^0-9.-]/g, "")) || 0;
+      const str = (t: unknown) => (t === null || t === undefined ? "" : String(t));
+      const inv: Invoice = {
+        vendor: str(raw.vendor), invoiceNo: str(raw.invoiceNo), date: str(raw.date),
+        lines: (Array.isArray(raw.lines) ? raw.lines : []).map((l) => ({ description: str(l.description), costItemId: l.costItemId ? str(l.costItemId) : null, quantity: num(l.quantity), rate: num(l.rate), amount: num(l.amount) })),
+        subtotal: num(raw.subtotal), tax: num(raw.tax), total: num(raw.total),
+        supplierGstin: raw.supplierGstin ? str(raw.supplierGstin) : null, buyerGstin: raw.buyerGstin ? str(raw.buyerGstin) : null, sac: raw.sac ? str(raw.sac) : null,
+        taxLines: (Array.isArray(raw.taxLines) ? raw.taxLines : []).map((t) => ({ type: (str(t.type).toUpperCase() as "IGST" | "CGST" | "SGST" | "GST"), ratePct: num(t.ratePct), amount: num(t.amount) })),
+      };
       update((x) => ({ ...x, invoice: inv, status: "ready", verdict: undefined, history: x.invoice ? [...(x.history || []), { invoiceNo: x.invoice.invoiceNo, date: x.invoice.date, total: x.invoice.total, status: x.status }] : x.history }));
       setVerdict(null);
     } catch (e) {
@@ -297,7 +306,7 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="min-h-0 flex-1 overflow-auto">
+              <div className="min-h-0 flex-1 overflow-auto"><Safe key={v.id + step + (v.invoice?.invoiceNo || "")}>
                 {step === 1 && (
                   <div className="space-y-2 p-3">
                     <p className="text-zinc-700">{v.agreement.summary}</p>
@@ -567,13 +576,19 @@ export default function Home() {
                     )}
                   </div>
                 )}
-              </div>
+              </Safe></div>
             </>
           )}
         </main>
       </div>
     </div>
   );
+}
+
+class Safe extends Component<{ children: ReactNode }, { err: string | null }> {
+  state = { err: null as string | null };
+  static getDerivedStateFromError(e: Error) { return { err: e.message }; }
+  render() { return this.state.err ? <div className="m-4 rounded-lg bg-risk-50 p-3 text-risk">Something in this view failed to display ({this.state.err}). Try uploading the file again.</div> : this.props.children; }
 }
 
 function Stat({ label, value, tone, sub }: { label: string; value: string; tone?: "good" | "bad" | "warn"; sub?: string }) {

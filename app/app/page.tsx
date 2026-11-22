@@ -9,6 +9,7 @@ import { computeAlerts, monthLabel } from "@/lib/alerts";
 import { DEMO_ORG, DEFAULT_CHECKLIST, loadOrg, saveOrg, ROLE_INFO, type Org, type Role } from "@/lib/org";
 import { Logo } from "@/components/Logo";
 import { fileToDoc, type Doc } from "@/lib/files";
+import AskVoice from "@/components/AskVoice";
 import Link from "next/link";
 
 type Step = 1 | 2 | 3;
@@ -308,6 +309,7 @@ export default function Home() {
                 </div>
               </div>
 
+              <AskVoice vendor={v.agreement.vendor} context={{ agreement: { ...v.agreement, costItems: v.agreement.costItems.map((c) => ({ name: c.name, unit: c.unit, billingEvent: c.billingEvent, plainEnglish: c.plainEnglish, pricing: c.pricing, recurring: c.recurring, includes: c.includes, clause: c.clause, owner: c.owner, confirmedUsage: c.actualQty, answers: c.questions.map((x) => `${x.text}: ${x.answer || "unanswered"}`) })) }, invoice: v.invoice, check: check ? { lines: check.lines, overbilled: check.atRisk, notInAgreement: check.unmatched, waitingForUsage: check.pending } : null, status: v.status, disputes: v.disputes }} />
               <div className="md:min-h-0 md:flex-1 md:overflow-auto"><Safe key={v.id + step + (v.invoice?.invoiceNo || "")}>
                 {step === 1 && (
                   <div className="space-y-3 p-3 md:p-4">

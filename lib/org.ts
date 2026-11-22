@@ -1,6 +1,6 @@
 export type Role = "Admin" | "Approver" | "Owner" | "Viewer";
 export interface Member { id: string; name: string; email: string; role: Role }
-export interface Org { name: string; gstin: string; plan: string; members: Member[] }
+export interface Org { name: string; gstin: string; plan: string; members: Member[]; mode?: "company" | "personal" }
 
 const KEY = "invoiceguard.org";
 export function loadOrg(): Org | null {

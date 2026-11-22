@@ -62,6 +62,7 @@ export interface Agreement {
   negotiate?: { type: string; item: string; ask: string; why: string }[];
   keyTerms?: { kind: "payment" | "dispute" | "penalty" | "free_period" | "renewal" | "billing_start" | "other"; label: string; detail: string; days?: number | null }[];
   invoiceDay?: number | null; // day of month the invoice is expected
+  dates?: { start?: string | null; end?: string | null; noticeDays?: number | null; lockInMonths?: number | null; escalation?: string | null; depositRefund?: string | null };
   agreementMinimum?: number | null; // minimum monthly billing across the whole agreement, in rupees
   liabilities?: { label: string; detail: string; severity: "high" | "medium" | "low"; amount?: string | null }[];
   checklist?: { item: string; status: "found" | "missing" | "unclear"; detail: string }[];

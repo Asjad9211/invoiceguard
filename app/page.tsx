@@ -65,6 +65,7 @@ export default function Landing() {
             <a href="#how" className="hover:text-[#17140f]">How it works</a>
             <a href="#use-cases" className="hover:text-[#17140f]">Use cases</a>
             <a href="#gst" className="hover:text-[#17140f]">GST</a>
+            <a href="#personal" className="hover:text-[#17140f]">For you</a>
             <a href="#teams" className="hover:text-[#17140f]">Teams</a>
             <a href="#pricing" className="hover:text-[#17140f]">Pricing</a>
           </nav>
@@ -151,6 +152,21 @@ export default function Landing() {
         </div>
       </section>
 
+      <section id="personal" className="border-t lux-line">
+        <div className="mx-auto grid max-w-6xl gap-8 px-5 py-14 md:grid-cols-2 md:items-center">
+          <div>
+            <Head k="For yourself" t="Your rent agreement," em="and every bill you sign up for." />
+            <p className="mt-4 text-[15px] leading-relaxed lux-muted">Upload a rent agreement, a broadband plan, an insurance policy or a school fee letter. We tell you what you pay, when it goes up, when to give notice, and how your deposit comes back. Free for up to 3 agreements.</p>
+            <Link href="/signup?for=me" className="mt-6 inline-block rounded-full bg-gold px-6 py-3 font-medium text-white hover:bg-[#1c3bb8]">Start for myself</Link>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            {[["Rent goes up", "Reminder before the increase, and a check that it matches the agreed %"], ["Notice period", "The last date to give notice, so you don't pay an extra month"], ["Deposit", "What can be deducted and when it must be returned"], ["Renewal", "An alert before your 11 months end"]].map(([t, d]) => (
+              <div key={t} className="lux-card rounded-2xl p-4"><div className="font-medium">{t}</div><div className="mt-1 text-[13px] lux-muted">{d}</div></div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* GST */}
       <section id="gst" className="border-t lux-line">
         <div className="mx-auto grid max-w-6xl gap-12 px-5 py-14 md:grid-cols-2">
@@ -199,13 +215,13 @@ export default function Landing() {
               { n: "Team", p: "₹1,499", s: "a month", f: ["First month free", "Up to 15 vendors", "5 users included", "₹99 per extra user a month", "₹149 per extra vendor a month", "Usage file import"], cta: "Try a month free", hi: true },
               { n: "Business", p: "Let's talk", s: "", f: ["Unlimited vendors and users", "Usage from vendor APIs", "Tally, Zoho or SAP export", "Single sign-on"], cta: "Contact us" },
             ].map((t) => (
-              <div key={t.n} className={`flex flex-col rounded-3xl p-8 ${t.hi ? "bg-[#17140f] text-[#f4efe6]" : "lux-card"}`}>
+              <div key={t.n} className={`flex flex-col rounded-3xl p-8 ${t.hi ? "bg-[#0e1a46] text-white" : "lux-card"}`}>
                 <div className={`text-[13px] font-medium ${t.hi ? "text-[#f4efe6]/60" : "lux-muted"}`}>{t.n}</div>
                 <div className="mt-3 flex items-baseline gap-2"><span className="font-serif text-[52px] leading-none">{t.p}</span><span className={t.hi ? "text-[#f4efe6]/50" : "lux-muted"}>{t.s}</span></div>
                 <ul className={`mt-6 flex-1 space-y-2.5 text-[14px] ${t.hi ? "text-[#f4efe6]/75" : "lux-muted"}`}>
                   {t.f.map((f) => <li key={f} className="flex gap-2.5"><span className={`mt-2 h-1 w-1 shrink-0 rounded-full ${t.hi ? "bg-gold" : "bg-gold"}`} />{f}</li>)}
                 </ul>
-                <Link href="/signup" className={`mt-8 rounded-full px-5 py-3 text-center text-[14px] font-medium ${t.hi ? "bg-gold text-white" : "border border-[#17140f]/20 hover:border-[#17140f]/60"}`}>{t.cta}</Link>
+                <Link href="/signup" className={`mt-8 rounded-full px-5 py-3 text-center text-[14px] font-medium ${t.hi ? "bg-white text-[#0e1a46]" : "border border-[#17140f]/20 hover:border-[#17140f]/60"}`}>{t.cta}</Link>
               </div>
             ))}
           </div>
@@ -218,7 +234,7 @@ export default function Landing() {
           <div className="font-serif text-[44px] leading-[1.02] md:text-[72px]">Try it on <em className="text-gold">one</em> agreement.</div>
           <p className="mt-4 lux-muted">Your documents are only used for your account.</p>
           <div className="mt-8 flex justify-center gap-3">
-            <Link href="/signup" className="rounded-full bg-[#17140f] px-6 py-3 font-medium text-[#f4efe6]">Start free</Link>
+            <Link href="/signup" className="rounded-full bg-gold px-6 py-3 font-medium text-white">Start free</Link>
             <Link href="/app" className="rounded-full border border-[#17140f]/25 px-6 py-3 font-medium hover:border-[#17140f]">Upload an agreement</Link>
           </div>
         </div>

@@ -82,7 +82,7 @@ export default function AskVoice({ context, vendor }: { context: unknown; vendor
 
   return (
     <>
-      <button onClick={() => setOpen(true)} className="fixed bottom-4 right-4 z-40 flex items-center gap-2 rounded-full bg-[#17140f] px-4 py-3 font-medium text-white shadow-xl hover:bg-black">
+      <button onClick={() => setOpen(true)} className="fixed bottom-4 right-4 z-40 flex items-center gap-2 rounded-full bg-gold px-4 py-3 font-medium text-white shadow-xl hover:bg-[#1c3bb8]">
         <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M12 3a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3zM5 11a7 7 0 0 0 14 0M12 18v3" /></svg>
         Ask about {vendor.length > 18 ? "this vendor" : vendor}
       </button>
@@ -104,7 +104,7 @@ export default function AskVoice({ context, vendor }: { context: unknown; vendor
             )}
             {chat.map((m, i) => (
               <div key={i} className="space-y-1.5">
-                <div className="ml-auto w-fit max-w-[85%] rounded-2xl rounded-br-sm bg-[#17140f] px-3 py-2 text-[14px] text-white">{m.q}</div>
+                <div className="ml-auto w-fit max-w-[85%] rounded-2xl rounded-br-sm bg-gold px-3 py-2 text-[14px] text-white">{m.q}</div>
                 <div className="flex items-start gap-1.5">
                   <div className="w-fit max-w-[85%] rounded-2xl rounded-bl-sm bg-paper px-3 py-2 text-[14px]">{m.a}</div>
                   <button onClick={() => say(m.a)} className="mt-1 text-[12px] text-cobalt" aria-label="Play answer">▶</button>

@@ -62,6 +62,7 @@ export default function Home() {
   const [bellOpen, setBellOpen] = useState(false);
   const [org, setOrg] = useState<Org>(DEMO_ORG);
   const [teamOpen, setTeamOpen] = useState(false);
+  const personal = org.mode === "personal";
   const [showCompare, setShowCompare] = useState(false);
   const [welcome, setWelcome] = useState(false);
   useEffect(() => {
@@ -236,11 +237,11 @@ export default function Home() {
               </div>
             )}
           </div>
-          <button onClick={() => setTeamOpen(true)} className="flex items-center gap-1.5 rounded-md border border-line px-2 py-1 hover:bg-paper">
+          {personal ? <span className="flex items-center gap-1.5 rounded-md border border-line px-2 py-1"><span className="grid h-5 w-5 place-items-center rounded-full bg-gold text-[10px] font-semibold text-white">{org.name.slice(0, 1)}</span><span className="hidden font-medium sm:inline">{org.name}</span></span> : <button onClick={() => setTeamOpen(true)} className="flex items-center gap-1.5 rounded-md border border-line px-2 py-1 hover:bg-paper">
             <span className="grid h-5 w-5 place-items-center rounded-full bg-ink text-[10px] font-semibold text-white">{org.name.slice(0, 1)}</span>
             <span className="hidden max-w-[140px] truncate font-medium sm:inline">{org.name}</span>
             <span className="hidden text-slate sm:inline">· Team {org.members.length}</span>
-          </button>
+          </button>}
         </div>
       </header>
       {welcome && <div className="shrink-0 bg-cobalt-50 px-3 py-1.5 text-cobalt">Welcome, {org.members[0]?.name}! Your company is set up. Invite your team from the top right, then upload your first agreement. <button className="underline" onClick={() => setWelcome(false)}>Got it</button></div>}
@@ -248,16 +249,16 @@ export default function Home() {
 
       <div className="flex min-h-0 flex-1 flex-col md:flex-row">
         {/* vendor rail */}
-        <aside className="flex shrink-0 flex-col gap-1 bg-[#17140f] p-2 text-white md:w-64 md:p-3">
-          <label className="flex cursor-pointer items-center justify-center gap-2 rounded-full bg-white px-3 py-2.5 font-medium text-black hover:bg-white/90">
-            <span className="text-lg leading-none">+</span> Add vendor
+        <aside className="flex shrink-0 flex-col gap-1 bg-[#0e1a46] p-2 text-white md:w-64 md:p-3">
+          <label className="flex cursor-pointer items-center justify-center gap-2 rounded-full bg-gold px-3 py-2.5 font-medium text-white hover:bg-[#1c3bb8]">
+            <span className="text-lg leading-none">+</span> {personal ? "Add agreement" : "Add vendor"}
             <input type="file" accept=".pdf,.docx,.txt,.png,.jpg,.jpeg,.webp" className="hidden" onChange={async (e) => { const f = e.target.files?.[0]; e.target.value = ""; if (!f) return; try { setStage(f.name); addAgreement(await fileToDoc(f)); } catch (x) { setErr(String(x)); } }} />
           </label>
           <div className="hidden px-1 pb-1 text-center text-[11px] text-white/50 md:block">Agreement as PDF, Word, scan or photo</div>
           <button onClick={() => setActiveId(null)} className={`mt-1 flex items-center gap-2 rounded-lg px-2.5 py-2 text-left font-medium md:mt-2 ${activeId === null ? "bg-white/10" : "text-white/70 hover:bg-white/5 hover:text-white"}`}>
             <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z" /></svg> Dashboard
           </button>
-          <div className="mt-3 hidden px-2.5 text-[11px] font-medium uppercase tracking-wider text-white/40 md:block">Vendors · {vendors.length}</div>
+          <div className="mt-3 hidden px-2.5 text-[11px] font-medium uppercase tracking-wider text-white/40 md:block">{personal ? "Agreements" : "Vendors"} · {vendors.length}</div>
           <div className="flex gap-1 overflow-x-auto md:flex-col md:overflow-visible">
             {vendors.map((x) => {
               const ch = x.invoice ? checkInvoice(x.invoice, x.agreement.costItems) : null;
@@ -283,12 +284,12 @@ export default function Home() {
           {err && <div className="shrink-0 bg-red-50 px-3 py-1.5 text-red-700">{err} <button className="underline" onClick={() => setErr(null)}>dismiss</button></div>}
 
           {!v ? (
-            <Dashboard vendors={vendors} open={(id) => { setActiveId(id); setStep(3); }} setDispute={(vid, idx, status) => setVendors((all) => all.map((x) => x.id === vid ? { ...x, disputes: (x.disputes || []).map((d, k) => k === idx ? { ...d, status } : d) } : x))} remove={(id) => setVendors((all) => all.filter((x) => x.id !== id))} />
+            <Dashboard personal={personal} vendors={vendors} open={(id) => { setActiveId(id); setStep(3); }} setDispute={(vid, idx, status) => setVendors((all) => all.map((x) => x.id === vid ? { ...x, disputes: (x.disputes || []).map((d, k) => k === idx ? { ...d, status } : d) } : x))} remove={(id) => setVendors((all) => all.filter((x) => x.id !== id))} />
           ) : (
             <>
               {/* vendor header + stepper */}
               <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b border-zinc-200 bg-white px-3 py-1.5">
-                <div className="flex items-center gap-2"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-black font-serif text-sm font-bold text-white">{v.agreement.vendor.slice(0, 1)}</span><span className="line-clamp-2 font-serif text-[20px] leading-tight md:text-[24px]">{v.agreement.vendor}</span></div>
+                <div className="flex items-center gap-2"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-gold font-serif text-sm font-bold text-white">{v.agreement.vendor.slice(0, 1)}</span><span className="line-clamp-2 font-serif text-[20px] leading-tight md:text-[24px]">{v.agreement.vendor}</span></div>
                 <div className="text-zinc-500">{v.agreement.service} · {v.agreement.period}</div>
                 <div className="flex items-center gap-2 text-[12px]">
                   <span className="rounded-full bg-paper px-2 py-0.5 text-slate">{(v.agreementVersions || []).length > 1 ? `Using: ${v.agreementVersions![v.agreementVersions!.length - 1].label} (${v.agreementVersions![v.agreementVersions!.length - 1].date})` : "Using: first upload"}</span>
@@ -299,10 +300,10 @@ export default function Home() {
                 <div className="ml-auto flex overflow-hidden rounded-2xl border border-line bg-white p-0.5">
                   {([
                     [1, `Understand${openQs ? ` · ${openQs} to answer` : " ✓"}`],
-                    [2, `Who checks ${setupDone}/${items.length}`],
-                    [3, v.invoice ? (check && check.atRisk > 0 ? `Invoice · ${inr(check.atRisk)} at risk` : missingUsage ? "Invoice · usage needed" : v.status === "approved" ? "Invoice ✓" : "Invoice") : "Invoice"],
+                    [2, personal ? "Usage & notes" : `Who checks ${setupDone}/${items.length}`],
+                    [3, personal && !v.invoice ? "Bill" : v.invoice ? (check && check.atRisk > 0 ? `Invoice · ${inr(check.atRisk)} at risk` : missingUsage ? "Invoice · usage needed" : v.status === "approved" ? "Invoice ✓" : "Invoice") : "Invoice"],
                   ] as [Step, string][]).map(([s, label]) => (
-                    <button key={s} onClick={() => setStep(s)} className={`whitespace-nowrap rounded-md px-3 py-1.5 font-medium transition-colors ${step === s ? "bg-black text-white" : "text-slate hover:bg-paper hover:text-ink"}`}>
+                    <button key={s} onClick={() => setStep(s)} className={`whitespace-nowrap rounded-md px-3 py-1.5 font-medium transition-colors ${step === s ? "bg-gold text-white" : "text-slate hover:bg-paper hover:text-ink"}`}>
                       {s} {label}
                     </button>
                   ))}
@@ -327,6 +328,7 @@ export default function Home() {
                         ))}
                       </div>
                     </div>
+                    <DatesCard d={v.agreement.dates} />
                     {(v.agreement.risks?.length > 0 || notStated.length > 0) && (
                       <div className="rounded-2xl border border-line bg-white">
                         <div className="border-b border-line px-4 py-2.5 font-semibold">Watch out for</div>
@@ -409,11 +411,11 @@ export default function Home() {
                   <div className="space-y-3 p-3 md:p-4">
                     <div className="flex flex-wrap items-center gap-2">
                       <div>
-                        <div className="font-serif text-[26px] leading-none">Who checks what</div>
+                        <div className="font-serif text-[26px] leading-none">{personal ? "Usage and notes" : "Who checks what"}</div>
                         <p className="text-slate">One owner per charge, and the data they trust. Upload a usage export and we work out how to count it.</p>
                       </div>
                       <div className="ml-auto flex flex-wrap gap-2">
-                        <label className="cursor-pointer rounded-md bg-black px-4 py-2 font-medium text-white hover:bg-black/85">
+                        <label className="cursor-pointer rounded-md bg-gold px-4 py-2 font-medium text-white hover:bg-[#1c3bb8]">
                           Import usage file (CSV or Excel)
                           <input type="file" accept=".csv,.txt,.xlsx,.xls" className="hidden" onChange={async (e) => {
                             const f = e.target.files?.[0]; e.target.value = ""; if (!f) return;
@@ -446,12 +448,12 @@ export default function Home() {
                               )}
                             </div>
                             <div className="md:col-span-3">
-                              <label className="text-[11px] font-medium uppercase tracking-wide text-slate">Owner</label>
+                              {!personal && <><label className="text-[11px] font-medium uppercase tracking-wide text-slate">Owner</label>
                               <select value={c.owner || ""} onChange={(e) => { if (e.target.value === "__invite") { setTeamOpen(true); return; } updateItem(c.id, { owner: e.target.value }); }} className="mt-0.5 w-full rounded-md border border-line bg-white px-2 py-1.5">
                                 <option value="">Choose owner…</option>
                                 {org.members.filter((m) => m.role !== "Viewer").map((m) => <option key={m.id} value={m.name}>{m.name}{m.id === "u1" ? " (you)" : ""}</option>)}
                                 <option value="__invite">+ Invite a teammate…</option>
-                              </select>
+                              </select></>}
                               <div className="mt-2 flex rounded-md bg-paper p-0.5 text-[13px]">
                                 <button onClick={() => updateItem(c.id, { sourceOfTruth: "manual" })} className={`flex-1 rounded px-2 py-1 ${c.sourceOfTruth !== "api" ? "bg-white font-medium shadow-sm" : "text-slate"}`}>Report / file</button>
                                 <button onClick={() => updateItem(c.id, { sourceOfTruth: "api" })} className={`flex-1 rounded px-2 py-1 ${c.sourceOfTruth === "api" ? "bg-white font-medium shadow-sm" : "text-slate"}`}>API</button>
@@ -513,7 +515,7 @@ export default function Home() {
                 {step === 3 && (
                   <div className="space-y-3 p-3 md:p-4">
                     <div className="flex flex-wrap items-center gap-2">
-                      <label className="cursor-pointer rounded-md bg-black px-4 py-2 font-medium text-white hover:bg-black/85">
+                      <label className="cursor-pointer rounded-md bg-gold px-4 py-2 font-medium text-white hover:bg-[#1c3bb8]">
                         {v.invoice ? "Upload next invoice" : "Upload invoice"}
                         <input type="file" accept=".pdf,.docx,.txt,.png,.jpg,.jpeg,.webp" className="hidden" onChange={async (e) => { const f = e.target.files?.[0]; e.target.value = ""; if (!f) return; try { setStage(f.name); addInvoice(await fileToDoc(f)); } catch (x) { setErr(String(x)); } }} />
                       </label>
@@ -595,8 +597,8 @@ export default function Home() {
                         <div className="flex flex-wrap items-center justify-end gap-2 rounded-2xl border border-line bg-white p-3">
                           {v.status === "approved" ? (
                             <div className="w-full space-y-3">
-                              <div className="flex items-center gap-2"><span className="rounded-full bg-ok-50 px-3 py-1 font-semibold text-ok">Approved for payment</span><button onClick={() => update((x) => ({ ...x, status: "ready", approval: undefined }))} className="text-[12px] text-slate underline">Undo</button></div>
-                              <PaymentNote v={v} org={org} gstRate={v.invoice.subtotal ? v.invoice.tax / v.invoice.subtotal : 0} terms={v.agreement.keyTerms} openTeam={() => setTeamOpen(true)} />
+                              <div className="flex items-center gap-2"><span className="rounded-full bg-ok-50 px-3 py-1 font-semibold text-ok">{personal ? "Paid" : "Approved for payment"}</span><button onClick={() => update((x) => ({ ...x, status: "ready", approval: undefined }))} className="text-[12px] text-slate underline">Undo</button></div>
+                              {!personal && <PaymentNote v={v} org={org} gstRate={v.invoice.subtotal ? v.invoice.tax / v.invoice.subtotal : 0} terms={v.agreement.keyTerms} openTeam={() => setTeamOpen(true)} />}
                             </div>
                           ) : (
                             <>
@@ -605,8 +607,8 @@ export default function Home() {
                               </span>
                               
                               {(check.atRisk > 0 || check.unmatched > 0) && <button onClick={() => update((x) => ({ ...x, status: "disputed", disputes: [...(x.disputes || []).filter((d) => d.invoiceNo !== (x.invoice?.invoiceNo || "")), { invoiceNo: x.invoice?.invoiceNo || "", date: x.invoice?.date || "", amount: check.atRisk + check.unmatched, status: "open" }] }))} className="rounded-md bg-risk px-3 py-2 font-semibold text-white">Mark as disputed</button>}
-                              <button disabled={check.pending > 0} onClick={() => update((x) => ({ ...x, status: "approved", approval: { amount: check.atRisk > 0 ? check.expectedSubtotal : x.invoice!.subtotal, by: org.members[0]?.name || "You", on: new Date().toLocaleDateString("en-IN") } }))} className={`rounded-md px-3 py-2 font-semibold ${check.atRisk > 0 || check.unmatched > 0 ? "border border-line" : "bg-black text-white"} disabled:opacity-40`}>
-                                Approve {inr(check.atRisk > 0 ? check.expectedSubtotal : v.invoice.subtotal)} + GST
+                              <button disabled={check.pending > 0} onClick={() => update((x) => ({ ...x, status: "approved", approval: { amount: check.atRisk > 0 ? check.expectedSubtotal : x.invoice!.subtotal, by: org.members[0]?.name || "You", on: new Date().toLocaleDateString("en-IN") } }))} className={`rounded-md px-3 py-2 font-semibold ${check.atRisk > 0 || check.unmatched > 0 ? "border border-line" : "bg-gold text-white"} disabled:opacity-40`}>
+                                {personal ? "Mark as paid" : `Approve ${inr(check.atRisk > 0 ? check.expectedSubtotal : v.invoice.subtotal)} + GST`}
                               </button>
                             </>
                           )}
@@ -819,7 +821,7 @@ function Reading({ label, file }: { label: string; file: string }) {
         <ol className="mt-4 space-y-2">
           {steps.map((s, k) => (
             <li key={s} className={`flex items-center gap-2 text-[14px] transition-opacity ${k > i ? "opacity-40" : ""}`}>
-              <span className={`grid h-5 w-5 place-items-center rounded-full text-[11px] ${k < i ? "bg-black text-white" : k === i ? "border-2 border-cobalt" : "border border-line"}`}>{k < i ? "✓" : ""}</span>
+              <span className={`grid h-5 w-5 place-items-center rounded-full text-[11px] ${k < i ? "bg-gold text-white" : k === i ? "border-2 border-cobalt" : "border border-line"}`}>{k < i ? "✓" : ""}</span>
               {s}
             </li>
           ))}
@@ -880,11 +882,11 @@ function Checklist({ result, list, save }: { result?: Agreement["checklist"]; li
   );
 }
 
-function Dashboard({ vendors, open, setDispute, remove }: { vendors: Vendor[]; open: (id: string) => void; setDispute: (vid: string, idx: number, s: NonNullable<Vendor["disputes"]>[number]["status"]) => void; remove: (id: string) => void }) {
+function Dashboard({ personal, vendors, open, setDispute, remove }: { personal?: boolean; vendors: Vendor[]; open: (id: string) => void; setDispute: (vid: string, idx: number, s: NonNullable<Vendor["disputes"]>[number]["status"]) => void; remove: (id: string) => void }) {
   if (!vendors.length) return (
     <div className="grid flex-1 place-items-center p-6 text-center">
       <div className="max-w-md space-y-2 text-slate">
-        <div className="font-serif text-[40px] leading-none text-ink">Add your first vendor</div>
+        <div className="font-serif text-[40px] leading-none text-ink">{personal ? "Add your first agreement" : "Add your first vendor"}</div>
         <div>Upload a vendor agreement, order form or rate card: PDF, Word, a scan or a photo. We read it, list every charge and liability, and run your checklist.</div>
       </div>
     </div>
@@ -899,7 +901,7 @@ function Dashboard({ vendors, open, setDispute, remove }: { vendors: Vendor[]; o
   const recovered = vendors.flatMap((v) => v.disputes || []).filter((d) => d.status === "credit_note" || d.status === "corrected").reduce((s, d) => s + d.amount, 0);
   return (
     <div className="space-y-3 p-3 md:min-h-0 md:flex-1 md:overflow-auto md:p-4">
-      <div className="font-serif text-[32px] leading-none">All vendors</div>
+      <div className="font-serif text-[32px] leading-none">{personal ? "Your agreements" : "All vendors"}</div>
       <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
         <Stat label="Vendors" value={String(vendors.length)} />
         <Stat label="Latest invoices, incl. GST" value={inr(round(billed))} />
@@ -968,7 +970,7 @@ function EmailBox({ to, subject, body, mailTo = "" }: { to: string; subject: str
     <div className="rounded-xl border border-line bg-white p-3">
       <div className="mb-1 flex items-center gap-2 font-semibold">Email to {to}
         <button onClick={() => { navigator.clipboard?.writeText(`Subject: ${subject}\n\n${body}`); setCopied(true); setTimeout(() => setCopied(false), 1500); }} className="ml-auto rounded-full border border-line px-3 py-1 text-[12px] font-normal">{copied ? "Copied" : "Copy"}</button>
-        <a href={`mailto:${mailTo}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`} className="rounded-full bg-ink px-3 py-1 text-[12px] font-medium text-white">Open in email</a>
+        <a href={`mailto:${mailTo}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`} className="rounded-full bg-gold px-3 py-1 text-[12px] font-medium text-white">Open in email</a>
       </div>
       <div className="text-[13px] font-medium">Subject: {subject}</div>
       <pre className="mt-1 max-h-80 overflow-auto whitespace-pre-wrap font-sans text-[13px] text-ink-2">{body}</pre>
@@ -1094,6 +1096,23 @@ Thanks`;
         <div className="mt-3 rounded-lg bg-paper px-2.5 py-2 text-[12px] text-slate">Automatic email alerts to the payments team are coming soon. For now, open the draft in your email and send it.</div>
       </div>
       <EmailBox to={payers.length ? payers.map((p) => p.name).join(", ") : "your payments team"} subject={subject} body={body} mailTo={payers.map((p) => p.email).join(",")} />
+    </div>
+  );
+}
+
+function DatesCard({ d }: { d?: Agreement["dates"] }) {
+  if (!d) return null;
+  const fmt = (x?: string | null) => { if (!x) return null; const t = new Date(x); return isNaN(t.getTime()) ? x : t.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }); };
+  let notice: string | null = null;
+  if (d.end && d.noticeDays) { const t = new Date(d.end); if (!isNaN(t.getTime())) notice = new Date(t.getTime() - d.noticeDays * 86400000).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }); }
+  const rows = [
+    ["Starts", fmt(d.start)], ["Ends", fmt(d.end)], ["Give notice by", notice], ["Lock-in", d.lockInMonths ? `${d.lockInMonths} months` : null],
+    ["Price increase", d.escalation], ["Deposit refund", d.depositRefund],
+  ].filter(([, v]) => v);
+  if (!rows.length) return null;
+  return (
+    <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-line bg-line md:grid-cols-3">
+      {rows.map(([k, v]) => <div key={k} className="bg-white px-4 py-2.5"><div className="text-[11px] font-medium uppercase tracking-wide text-slate">{k}</div><div className="mt-0.5 text-[14px] font-medium">{v}</div></div>)}
     </div>
   );
 }

@@ -33,6 +33,20 @@ export function computeAlerts(vendors: Vendor[], today = new Date()): Alert[] {
         }
       }
     }
+    const d = v.agreement.dates;
+    if (d?.end) {
+      const end = new Date(d.end);
+      if (!isNaN(end.getTime())) {
+        const left = Math.ceil((end.getTime() - today.getTime()) / 86400000);
+        if (d.noticeDays) {
+          const by = new Date(end.getTime() - d.noticeDays * 86400000);
+          const nl = Math.ceil((by.getTime() - today.getTime()) / 86400000);
+          if (nl >= 0 && nl <= 30) out.push({ level: "risk", vendorId: v.id, text: `${name}: to leave or renegotiate, give notice by ${fmt(by)} (${nl} day${nl === 1 ? "" : "s"} left).` });
+        }
+        if (left >= 0 && left <= 60) out.push({ level: "warn", vendorId: v.id, text: `${name}: agreement ends ${fmt(end)}. Decide on renewal${d.escalation ? `; renewal terms: ${d.escalation}` : ""}.` });
+        else if (left < 0 && left > -60) out.push({ level: "warn", vendorId: v.id, text: `${name}: agreement ended ${fmt(end)}.${d.depositRefund ? ` Deposit: ${d.depositRefund}` : ""}` });
+      }
+    }
     const pending = v.agreement.costItems.filter((c) => c.pricing.mode !== "fixed" && c.actualQty === undefined && c.owner);
     if (inv && v.status !== "approved" && pending.length) out.push({ level: "info", vendorId: v.id, text: `${name}: waiting for ${[...new Set(pending.map((c) => c.owner))].join(", ")} to confirm usage.` });
   }

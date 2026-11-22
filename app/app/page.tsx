@@ -227,7 +227,7 @@ export default function Home() {
             {bellOpen && (
               <div className="absolute right-0 z-40 mt-1 w-80 rounded-2xl border border-line bg-white p-2 shadow-xl">
                 <div className="px-1 pb-1 font-semibold">Reminders</div>
-                {alerts.length === 0 ? <div className="px-1 py-2 text-slate">Nothing due. We'll remind you when an invoice is late, a payment is due or a dispute window is closing.</div> : alerts.map((a, i) => (
+                {alerts.length === 0 ? <div className="px-1 py-2 text-slate">Nothing due. We’ll remind you when an invoice is late, a payment is due or a dispute window is closing.</div> : alerts.map((a, i) => (
                   <button key={i} onClick={() => { setActiveId(a.vendorId); setBellOpen(false); }} className="flex w-full gap-2 rounded-md px-1 py-1.5 text-left hover:bg-paper">
                     <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${a.level === "risk" ? "bg-risk" : a.level === "warn" ? "bg-amber" : "bg-cobalt"}`} />
                     <span className="text-[13px]">{a.text}</span>
@@ -272,9 +272,16 @@ export default function Home() {
               );
             })}
           </div>
+          <div className="mt-2 flex gap-1.5 px-1 text-[12px]">
+            <button onClick={() => { const b = new Blob([JSON.stringify({ app: "invoiceguard", vendors }, null, 1)], { type: "application/json" }); const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = "invoiceguard-vendors.json"; a.click(); }} disabled={!vendors.length} className="flex-1 rounded-md border border-white/15 px-2 py-1.5 text-white/75 hover:bg-white/5 disabled:opacity-40">Export</button>
+            <label className="flex-1 cursor-pointer rounded-md border border-white/15 px-2 py-1.5 text-center text-white/75 hover:bg-white/5">Import
+              <input type="file" accept=".json" className="hidden" onChange={async (e) => { const f = e.target.files?.[0]; e.target.value = ""; if (!f) return; try { const j = JSON.parse(await f.text()); const list: Vendor[] = (j.vendors || []).filter((x: Vendor) => x?.agreement?.costItems); if (!list.length) throw new Error("No vendors found in this file"); setVendors((all) => [...list.filter((x) => !all.some((y) => y.id === x.id)), ...all]); setActiveId(list[0].id); } catch (x) { setErr("Couldn't import that file. " + String(x)); } }} />
+            </label>
+          </div>
           <div className="mt-auto hidden rounded-lg border border-white/10 p-2.5 text-[12px] text-white/55 md:block">
             <div className="mb-1 font-medium text-white/80">Coming soon</div>
-            Invoices picked up from your email · usage from vendor APIs · Tally export
+            Invoices picked up from your email · usage from vendor APIs · Tally export · shared team accounts
+            <div className="mt-2 text-white/45">Your data is saved in this browser. Use Export to back it up.</div>
           </div>
         </aside>
 
@@ -386,7 +393,7 @@ export default function Home() {
                     <Negotiate list={v.agreement.negotiate} />
                     <AgreementEmail a={v.agreement} state={v.pointState || {}} company={org.name} setState={(k, val) => update((x) => ({ ...x, pointState: { ...(x.pointState || {}), [k]: val } }))} />
                     {showCompare ? <Compare items={items} onQuote={(id, rate) => updateItem(id, { quoteRate: rate })} /> : (
-                      <button onClick={() => setShowCompare(true)} className="rounded-2xl border border-line bg-white px-3 py-2 font-medium hover:border-cobalt hover:text-cobalt">Compare with another vendor's quote</button>
+                      <button onClick={() => setShowCompare(true)} className="rounded-2xl border border-line bg-white px-3 py-2 font-medium hover:border-cobalt hover:text-cobalt">Compare with another vendor’s quote</button>
                     )}
                     <div className="flex justify-end">
                       <button onClick={() => setStep(2)} className="rounded bg-ink px-3 py-1.5 font-medium text-white">Next: who verifies each cost →</button>
@@ -484,7 +491,7 @@ export default function Home() {
                                     <span className="tnum whitespace-nowrap font-semibold">{q !== undefined ? inr(costFor(c, q)) : ""}</span>
                                   </div>
                                   {c.usageRule && <div className="mt-1 text-[11px] text-slate">Counted from file: {c.usageRule}</div>}
-                                  {cl && <div className="mt-1 rounded-md bg-amber-50 px-2 py-1 text-[12px] text-amber">At {fmtN(q!)} you pay {inr(cl.cost)}. At {fmtN(cl.nextQty)} you'd pay {inr(cl.nextCost)}. Ask for graduated slabs.</div>}
+                                  {cl && <div className="mt-1 rounded-md bg-amber-50 px-2 py-1 text-[12px] text-amber">At {fmtN(q!)} you pay {inr(cl.cost)}. At {fmtN(cl.nextQty)} you’d pay {inr(cl.nextCost)}. Ask for graduated slabs.</div>}
                                 </>
                               )}
                             </div>
@@ -694,7 +701,7 @@ function Compare({ items, onQuote }: { items: CostItem[]; onQuote: (id: string, 
   return (
     <div className="rounded-2xl border border-line bg-white p-3">
       <div className="font-semibold">Compare with another quote</div>
-      <div className="mb-2 text-[13px] text-slate">Enter a rate another vendor has quoted you. We'll show the monthly difference using your confirmed usage.</div>
+      <div className="mb-2 text-[13px] text-slate">Enter a rate another vendor has quoted you. We’ll show the monthly difference using your confirmed usage.</div>
       <div className="space-y-1.5">
         {rows.map((c) => {
           const yours = c.pricing.slabs[0].rate;
@@ -896,10 +903,24 @@ function Checklist({ result, list, save }: { result?: Agreement["checklist"]; li
 
 function Dashboard({ personal, vendors, open, setDispute, remove }: { personal?: boolean; vendors: Vendor[]; open: (id: string) => void; setDispute: (vid: string, idx: number, s: NonNullable<Vendor["disputes"]>[number]["status"]) => void; remove: (id: string) => void }) {
   if (!vendors.length) return (
-    <div className="grid flex-1 place-items-center p-6 text-center">
-      <div className="max-w-md space-y-2 text-slate">
-        <div className="font-serif text-[40px] leading-none text-ink">{personal ? "Add your first agreement" : "Add your first vendor"}</div>
-        <div>Upload a vendor agreement, order form or rate card: PDF, Word, a scan or a photo. We read it, list every charge and liability, and run your checklist.</div>
+    <div className="flex flex-1 items-center justify-center p-4 md:p-8">
+      <div className="w-full max-w-2xl">
+        <div className="font-serif text-[30px] leading-tight text-ink md:text-[38px]">{personal ? "Add your first agreement" : "Add your first vendor"}</div>
+        <p className="mt-2 text-slate">Three steps. The first one takes about a minute while we read the document.</p>
+        <ol className="mt-5 grid gap-3 md:grid-cols-3">
+          {[
+            ["Upload the agreement", "PDF, Word, a scan or a photo. Use “Add vendor” on the left."],
+            [personal ? "Add usage and notes" : "Confirm usage", personal ? "Optional. Note what you actually use." : "Pick who checks each charge, or import a usage file."],
+            [personal ? "Check the bill" : "Check the invoice", "Upload it. We show what you should pay and draft the emails."],
+          ].map(([t, d], i) => (
+            <li key={t} className="rounded-2xl border border-line bg-white p-4">
+              <span className="grid h-7 w-7 place-items-center rounded-full bg-gold text-[13px] font-semibold text-white">{i + 1}</span>
+              <div className="mt-3 font-semibold">{t}</div>
+              <div className="mt-1 text-[13px] text-slate">{d}</div>
+            </li>
+          ))}
+        </ol>
+        <p className="mt-4 text-[13px] text-slate">Already used InvoiceGuard on another device? Use <b>Import</b> on the left to bring your vendors here.</p>
       </div>
     </div>
   );
@@ -1076,7 +1097,7 @@ ${company}`;
           })}
         </ul>
       </div>
-      {open.length ? <EmailBox to={a.vendor} subject={subject} body={body} /> : <div className="rounded-xl border border-line bg-white p-3 text-slate">All points are handled. Once the vendor sends the final version, use "Upload final agreed agreement" at the top. Invoices will be checked against it.</div>}
+      {open.length ? <EmailBox to={a.vendor} subject={subject} body={body} /> : <div className="rounded-xl border border-line bg-white p-3 text-slate">All points are handled. Once the vendor sends the final version, use “Upload final agreed agreement” at the top. Invoices will be checked against it.</div>}
     </div>
   );
 }

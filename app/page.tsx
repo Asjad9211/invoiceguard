@@ -146,7 +146,7 @@ export default function Landing() {
               <div key={t} className="lux-card lift rounded-2xl p-5">
                 <div className="flex items-center gap-3">
                   <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gold/10 text-[13px] font-semibold text-gold">{String(i + 1).padStart(2, "0")}</span>
-                  <div className="min-w-0"><div className="text-[17px] font-semibold leading-tight">{t}</div><div className="text-[13px] lux-muted">Billed {how.charAt(0).toLowerCase() + how.slice(1)}</div></div>
+                  <div className="min-w-0"><div className="text-[17px] font-semibold leading-tight">{t}</div><div className="text-[13px] lux-muted">{how}</div></div>
                 </div>
                 <div className="mt-4 text-[11px] font-semibold uppercase tracking-wider lux-muted">What we check</div>
                 <ul className="mt-2 space-y-2">

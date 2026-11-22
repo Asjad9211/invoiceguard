@@ -259,13 +259,13 @@ export default function Home() {
             <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z" /></svg> Dashboard
           </button>
           <div className="mt-3 hidden px-2.5 text-[11px] font-medium uppercase tracking-wider text-white/40 md:block">{personal ? "Agreements" : "Vendors"} · {vendors.length}</div>
-          <div className="flex gap-1 overflow-x-auto md:flex-col md:overflow-visible">
+          <div className="flex max-h-48 flex-col gap-1 overflow-y-auto md:max-h-none md:overflow-visible">
             {vendors.map((x) => {
               const ch = x.invoice ? checkInvoice(x.invoice, x.agreement.costItems) : null;
               const dot = x.status === "approved" ? "bg-ok" : x.status === "disputed" || (ch && ch.atRisk > 0) ? "bg-risk" : ch && ch.pending ? "bg-amber" : "bg-white/30";
               const sub = x.status === "approved" ? "Approved" : x.status === "disputed" ? "Disputed" : ch && ch.atRisk > 0 ? `${inr(ch.atRisk)} overbilled` : ch && ch.pending ? "Waiting for usage" : x.invoice ? "To review" : `${x.agreement.costItems.length} charges · no invoice`;
               return (
-                <button key={x.id} onClick={() => setActiveId(x.id)} className={`flex max-w-[70vw] shrink-0 items-start gap-2 rounded-lg px-2.5 py-2 text-left md:max-w-none ${x.id === activeId ? "bg-white/10" : "hover:bg-white/5"}`}>
+                <button key={x.id} onClick={() => setActiveId(x.id)} className={`flex shrink-0 items-start gap-2 rounded-lg px-2.5 py-2 text-left md:max-w-none ${x.id === activeId ? "bg-white/10" : "hover:bg-white/5"}`}>
                   <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${dot}`} />
                   <span className="min-w-0"><span className="block truncate font-medium">{x.agreement.vendor}</span><span className="block text-[12px] text-white/55">{sub}</span></span>
                 </button>
@@ -339,61 +339,48 @@ export default function Home() {
                       </div>
                     )}
                     <div className="px-1 pt-1 font-serif text-[22px]">Charges</div>
-                    <div className="overflow-x-auto rounded-2xl ring-1 ring-line"><table className="w-full min-w-[640px] border-collapse bg-white">
-                      <thead className="text-left text-[11px] uppercase tracking-wide text-slate bg-paper">
-                        <tr className="border-b border-zinc-200">
-                          <th className="px-3 py-2">Cost item</th>
-                          <th className="px-3 py-2">When you are charged</th>
-                          <th className="px-3 py-2">Rate</th>
-                          <th className="hidden px-3 py-2 lg:table-cell">Agreement clause</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {items.map((c) => {
-                          const zones = cliffZones(c);
-                          return (
-                            <tr key={c.id} className="border-b border-zinc-100 align-top">
-                              <td className="px-3 py-3">
-                                <div className="font-medium">{c.name}</div>
-                                <div className="text-[11px] text-zinc-500">{c.category} · per {c.unit}{c.recurring === "one_time" ? " · one-time" : c.recurring === "on_request" ? " · only if used" : ""}</div>
-                                {c.includes && c.includes.length > 0 && <details className="mt-0.5 text-[12px] text-slate"><summary className="cursor-pointer text-cobalt">Includes {c.includes.length} steps</summary><ul className="list-disc pl-4">{c.includes.map((x) => <li key={x}>{x}</li>)}</ul></details>}
-                              </td>
-                              <td className="px-3 py-3">
-                                <span className={`mr-1 rounded px-1 py-0.5 text-[11px] ${c.billingEvent === "unclear" ? "bg-red-100 text-red-800" : "bg-zinc-100 text-zinc-700"}`}>{EVENT_LABEL[c.billingEvent] || c.billingEvent}</span>
-                                <span className="text-zinc-700">{c.plainEnglish}</span>
-                                {c.questions.map((q) => (
-                                  <div key={q.id} className="mt-1 rounded-md bg-cobalt-50 p-2">
-                                    <div className="text-ink">❓ {q.text}</div>
-                                    <div className="mt-1 flex flex-wrap gap-1">
-                                      {q.options.map((o) => (
-                                        <button key={o} onClick={() => updateItem(c.id, { questions: c.questions.map((x) => (x.id === q.id ? { ...x, answer: o } : x)) })} className={`rounded-md border px-2 py-1 text-[13px] ${q.answer === o ? "border-cobalt bg-cobalt text-white" : "border-cobalt-100 bg-white hover:border-cobalt"}`}>
-                                          {o}
-                                        </button>
-                                      ))}
-                                    </div>
-                                  </div>
-                                ))}
-                              </td>
-                              <td className="px-3 py-3">
-                                <div>{rateText(c)}</div>
-                                <div className="text-[11px] text-zinc-500">
-                                  {c.pricing.mode === "volume" ? "Volume: one rate on all units" : c.pricing.mode === "graduated" ? "Graduated: rate per band" : ""}
-                                  {c.freeUnits ? ` · ${fmtN(c.freeUnits)} free` : ""}
-                                  {c.minCommitment ? ` · min ${inr(c.minCommitment)}` : ""}
+                    <div className="space-y-2">
+                      {items.map((c) => {
+                        const zones = cliffZones(c);
+                        const si = slabIssue(c);
+                        return (
+                          <div key={c.id} className="rounded-2xl border border-line bg-white p-4">
+                            <div className="flex flex-wrap items-start gap-x-4 gap-y-1">
+                              <div className="min-w-0 flex-1">
+                                <div className="text-[15px] font-semibold">{c.name}</div>
+                                <div className="text-[12px] text-slate">{c.category} · per {c.unit}{c.recurring === "one_time" ? " · one-time" : c.recurring === "on_request" ? " · only if used" : ""}</div>
+                              </div>
+                              <div className="text-right">
+                                <div className="tnum font-semibold">{rateText(c)}</div>
+                                <div className="text-[12px] text-slate">{c.pricing.mode === "volume" ? "One rate on all units" : c.pricing.mode === "graduated" ? "Rate per band" : ""}{c.freeUnits ? ` · ${fmtN(c.freeUnits)} free` : ""}{c.minCommitment ? ` · min ${inr(c.minCommitment)}` : ""}</div>
+                              </div>
+                            </div>
+                            <div className="mt-2 flex flex-wrap items-baseline gap-2">
+                              <span className={`rounded-full px-2 py-0.5 text-[12px] font-medium ${c.billingEvent === "unclear" ? "bg-risk-50 text-risk" : "bg-cobalt-50 text-cobalt"}`}>{EVENT_LABEL[c.billingEvent] || c.billingEvent}</span>
+                              <span className="text-[14px] text-ink-2">{c.plainEnglish}</span>
+                            </div>
+                            {si && <div className="mt-2 rounded-lg bg-risk-50 px-2.5 py-1.5 text-[13px] text-risk">Slab table needs checking: {si}</div>}
+                            {zones.map((z, i) => <div key={i} className="mt-2 rounded-lg bg-amber-50 px-2.5 py-1.5 text-[13px] text-amber">Slab trap: from {fmtN(z.start)} to {fmtN(z.slabStart - 1)} units you pay more than at {fmtN(z.slabStart)}.</div>)}
+                            {c.questions.map((q) => (
+                              <div key={q.id} className="mt-2 rounded-xl bg-paper p-3">
+                                <div className="text-[14px] font-medium">{q.text}</div>
+                                <div className="mt-2 flex flex-wrap gap-1.5">
+                                  {q.options.map((o) => (
+                                    <button key={o} onClick={() => updateItem(c.id, { questions: c.questions.map((x) => (x.id === q.id ? { ...x, answer: o } : x)) })} className={`min-h-9 rounded-full border px-3 py-1 text-[13px] ${q.answer === o ? "border-cobalt bg-cobalt text-white" : "border-line bg-white hover:border-cobalt"}`}>{o}</button>
+                                  ))}
                                 </div>
-                                {slabIssue(c) && <div className="mt-1 rounded bg-risk-50 px-1.5 py-0.5 text-[11px] text-risk">Slab table needs checking: {slabIssue(c)}</div>}
-                                {zones.map((z, i) => (
-                                  <div key={i} className="mt-1 rounded bg-amber-50 px-1.5 py-0.5 text-[11px] text-amber-900">
-                                    Slab trap: between {fmtN(z.start)} and {fmtN(z.slabStart - 1)} units you pay more than at {fmtN(z.slabStart)}.
-                                  </div>
-                                ))}
-                              </td>
-                              <td className="hidden max-w-xs px-3 py-3 text-[12px] text-zinc-500 lg:table-cell">{c.clause}</td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table></div>
+                              </div>
+                            ))}
+                            {((c.includes && c.includes.length > 0) || c.clause) && (
+                              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[13px]">
+                                {c.includes && c.includes.length > 0 && <details className="text-slate"><summary className="cursor-pointer font-medium text-cobalt">Includes {c.includes.length} steps</summary><ul className="mt-1 list-disc pl-5">{c.includes.map((x) => <li key={x}>{x}</li>)}</ul></details>}
+                                {c.clause && <details className="text-slate"><summary className="cursor-pointer font-medium text-cobalt">Where it says this</summary><div className="mt-1">{c.clause}</div></details>}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                     <Liabilities list={v.agreement.liabilities} />
                     <Checklist result={v.agreement.checklist} list={checklist} save={saveChecklist} />
                     <Negotiate list={v.agreement.negotiate} />
@@ -540,8 +527,33 @@ export default function Home() {
                           <Stat label="Not in agreement" value={inr(check.unmatched)} tone={check.unmatched > 0 ? "warn" : undefined} sub={check.unmatched > 0 ? "Review before paying" : undefined} />
                           <Stat label="Waiting for usage" value={`${check.pending} line${check.pending === 1 ? "" : "s"}`} tone={check.pending > 0 ? "warn" : undefined} />
                         </div>
-                        <div className="overflow-hidden rounded-2xl border border-line bg-white">
-                          <table className="w-full min-w-[720px] border-collapse">
+                        <div className="space-y-2 md:hidden">
+                          {check.lines.map((l, i) => {
+                            const item = items.find((c) => c.id === l.costItemId);
+                            const usage = item && item.pricing.mode !== "fixed" && item.billingEvent !== "per_month";
+                            return (
+                              <div key={i} className="rounded-2xl border border-line bg-white p-4">
+                                <div className="flex items-start gap-2"><div className="min-w-0 flex-1 font-semibold">{l.description}</div><StatusPill s={l.status} /></div>
+                                <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-[14px]">
+                                  <div><dt className="text-[12px] text-slate">Billed qty</dt><dd className="tnum">{fmtN(l.invoicedQty)}</dd></div>
+                                  <div><dt className="text-[12px] text-slate">Billed</dt><dd className="tnum">{inr(l.invoicedAmount)}</dd></div>
+                                  <div><dt className="text-[12px] text-slate">Should be</dt><dd className="tnum">{l.expectedAmount !== null ? inr(l.expectedAmount) : "-"}</dd></div>
+                                  <div><dt className="text-[12px] text-slate">Difference</dt><dd className={`tnum font-semibold ${l.status === "discrepancy" && (l.diff ?? 0) > 0 ? "text-risk" : ""}`}>{l.diff ? (l.diff > 0 ? "+" : "") + inr(l.diff) : "-"}</dd></div>
+                                </dl>
+                                {usage && item && (
+                                  <div className="mt-3 flex items-center gap-2">
+                                    <label className="text-[13px] text-slate" htmlFor={"m" + i}>Confirmed usage</label>
+                                    <input id={"m" + i} type="number" value={item.actualQty ?? ""} onChange={(e) => updateItem(item.id, { actualQty: e.target.value === "" ? undefined : Number(e.target.value) })} placeholder="Enter" className="w-28 rounded-lg border border-line px-2 py-1.5 text-right" />
+                                    {item.actualQty === undefined && <button onClick={() => updateItem(item.id, { actualQty: l.invoicedQty })} className="text-[13px] font-medium text-cobalt">Same as billed</button>}
+                                  </div>
+                                )}
+                                {l.flags.length > 0 && <ul className="mt-2 space-y-1 text-[13px] text-slate">{l.flags.map((f, j) => <li key={j}>{f}</li>)}</ul>}
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <div className="hidden overflow-hidden rounded-2xl border border-line bg-white md:block">
+                          <table className="w-full border-collapse">
                             <thead className="bg-paper text-left text-[11px] uppercase tracking-wide text-slate">
                               <tr>
                                 <th className="px-3 py-2">Charge</th>
@@ -908,7 +920,22 @@ function Dashboard({ personal, vendors, open, setDispute, remove }: { personal?:
         <Stat label="Overbilled found" value={inr(round(over))} tone={over > 0 ? "bad" : undefined} />
         <Stat label="Recovered" value={inr(round(recovered))} tone={recovered > 0 ? "good" : undefined} sub={openDisputes.length ? `${openDisputes.length} dispute${openDisputes.length > 1 ? "s" : ""} open` : undefined} />
       </div>
-      <div className="overflow-x-auto rounded-2xl border border-line bg-white">
+      <div className="space-y-2 md:hidden">
+        {rows.map(({ v, c }) => {
+          const dIdx = (v.disputes || []).length - 1;
+          const d = dIdx >= 0 ? v.disputes![dIdx] : null;
+          const st = v.status === "approved" ? ["Approved", "bg-ok-50 text-ok"] : v.status === "disputed" ? ["Disputed", "bg-risk-50 text-risk"] : !v.invoice ? ["No invoice yet", "bg-paper text-slate"] : c && c.pending ? ["Waiting for usage", "bg-amber-50 text-amber"] : ["To review", "bg-cobalt-50 text-cobalt"];
+          return (
+            <div key={v.id} className="rounded-2xl border border-line bg-white p-4">
+              <div className="flex items-start gap-2"><button onClick={() => open(v.id)} className="min-w-0 flex-1 text-left font-semibold">{v.agreement.vendor}</button><span className={`rounded-full px-2 py-0.5 text-[12px] font-medium ${st[1]}`}>{st[0]}</span></div>
+              <div className="mt-1 text-[13px] text-slate">{v.invoice ? `${v.invoice.invoiceNo} · ${v.invoice.date} · ${inr(v.invoice.total)}` : `${v.agreement.costItems.length} charges · no invoice yet`}</div>
+              {d && <select value={d.status} onChange={(e) => setDispute(v.id, dIdx, e.target.value as typeof d.status)} className="mt-2 w-full rounded-lg border border-line px-2 py-1.5 text-[13px]">{Object.entries(DISPUTE_LABEL).map(([k, l]) => <option key={k} value={k}>Dispute {inr(d.amount)}: {l}</option>)}</select>}
+              <div className="mt-2 flex justify-between"><button onClick={() => open(v.id)} className="text-[13px] font-medium text-cobalt">Open</button><RemoveBtn onConfirm={() => remove(v.id)} /></div>
+            </div>
+          );
+        })}
+      </div>
+      <div className="hidden overflow-hidden rounded-2xl border border-line bg-white md:block">
         <table className="w-full text-left">
           <thead className="bg-paper text-[11px] uppercase tracking-wide text-slate"><tr><th className="px-3 py-2">Vendor</th><th className="px-3 py-2">Latest invoice</th><th className="px-3 py-2 text-right">Amount</th><th className="px-3 py-2">Status</th><th className="px-3 py-2">Dispute</th><th className="px-3 py-2"></th></tr></thead>
           <tbody>

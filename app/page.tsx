@@ -26,17 +26,17 @@ const STEPS = [
 ];
 
 
-const CASES = [
-  ["KYC and onboarding", "One price per onboarding that covers 15 steps. We ask whether drop-offs are billed and check started versus completed journeys."],
-  ["SMS, WhatsApp and email", "Sent versus delivered, multi-part messages, template categories, DLT charges and the platform fee on top."],
-  ["Payment gateway", "MDR by payment mode, refunds and chargeback fees, and settlement deductions against the rate card."],
-  ["Cloud and hosting", "Reserved versus on-demand, committed spend, free credits that expire and egress charges."],
-  ["SaaS licences", "Seats billed versus seats in use, auto-renewals, and price increases at renewal."],
-  ["Telecom and calling", "Per-minute versus per-pulse billing, rentals for numbers you no longer use, and plan minimums."],
-  ["Agencies and consultants", "Retainers, hours capped in the contract, and work billed outside the agreed scope."],
-  ["Logistics and couriers", "Weight slabs, fuel surcharges, RTO charges and COD fees."],
-  ["Data and credit bureaus", "Per-hit pricing, hits on failed lookups and minimum monthly billing."],
-  ["Facilities and rentals", "Escalation clauses, maintenance charges and pass-through utilities."],
+const CASES: [string, string, string[]][] = [
+  ["KYC and onboarding", "Per onboarding, per step", ["Started vs completed", "Drop-offs billed?", "Step-wise breakup"]],
+  ["SMS, WhatsApp, email", "Per message, by slab", ["Sent vs delivered", "Template category", "DLT and platform fees"]],
+  ["Payment gateway", "MDR by payment mode", ["Rate per mode", "Fees on refunds", "Chargeback charges"]],
+  ["Cloud and hosting", "Commitment + usage", ["Unused commitment", "Credits applied", "Data transfer"]],
+  ["SaaS licences", "Per seat, yearly", ["Seats used vs billed", "Auto-renewal", "Price increase"]],
+  ["Telecom and calling", "Per minute or pulse", ["Pulse vs minute", "Idle number rentals", "Plan minimums"]],
+  ["Agencies", "Retainer + hours", ["Hours cap", "Out-of-scope work", "Approvals"]],
+  ["Logistics", "Weight slabs + surcharges", ["Actual vs volumetric", "Fuel surcharge", "Return charges"]],
+  ["Credit bureaus", "Per hit + minimum", ["Failed hits", "Retries", "Monthly minimum"]],
+  ["Rent and facilities", "Rent + maintenance", ["Yearly increase", "Area billed", "Deposit terms"]],
 ];
 
 const GST = [
@@ -141,11 +141,17 @@ export default function Landing() {
       <section id="use-cases" className="border-t lux-line">
         <div className="mx-auto max-w-6xl px-5 py-14">
           <Head k="Works with any agreement" t="If a vendor bills you against a contract," em="InvoiceGuard can read it." />
-          <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-            {CASES.map(([t, d]) => (
+          <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {CASES.map(([t, how, checks], i) => (
               <div key={t} className="lux-card lift rounded-2xl p-5">
-                <div className="text-[15px] font-medium">{t}</div>
-                <p className="mt-2 text-[13px] leading-relaxed lux-muted">{d}</p>
+                <div className="flex items-center gap-3">
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gold/10 text-[13px] font-semibold text-gold">{String(i + 1).padStart(2, "0")}</span>
+                  <div className="min-w-0"><div className="text-[17px] font-semibold leading-tight">{t}</div><div className="text-[13px] lux-muted">Billed {how.charAt(0).toLowerCase() + how.slice(1)}</div></div>
+                </div>
+                <div className="mt-4 text-[11px] font-semibold uppercase tracking-wider lux-muted">What we check</div>
+                <ul className="mt-2 space-y-2">
+                  {checks.map((x) => <li key={x} className="flex items-start gap-2.5 text-[15px]"><svg viewBox="0 0 24 24" className="mt-0.5 h-[18px] w-[18px] shrink-0 text-gold" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg>{x}</li>)}
+                </ul>
               </div>
             ))}
           </div>
@@ -189,18 +195,16 @@ export default function Landing() {
       <section id="teams" className="border-t lux-line">
         <div className="mx-auto max-w-6xl px-5 py-14">
           <Head k="Teams" t="Bring in the people" em="who already have the numbers." />
-          <div className="mt-8 overflow-x-auto rounded-3xl border lux-line">
-            <table className="w-full text-[14px]">
-              <thead><tr className="border-b lux-line text-left"><th className="px-6 py-4 font-medium">Role</th>{PERMS.map((p) => <th key={p} className="px-4 py-4 text-center text-[12px] font-normal lux-muted">{p}</th>)}</tr></thead>
-              <tbody>
-                {ROLES.map((r) => (
-                  <tr key={r.r} className="border-b lux-line last:border-0">
-                    <td className="px-6 py-4"><div className="font-medium">{r.r}</div><div className="text-[12px] lux-muted">{r.d}</div></td>
-                    {r.p.map((v, i) => <td key={i} className="px-4 py-4 text-center">{v ? <span className="text-gold">●</span> : <span className="text-[#17140f]/15">○</span>}</td>)}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="mt-8 grid gap-3 md:grid-cols-4">
+            {ROLES.map((r) => (
+              <div key={r.r} className="lux-card rounded-2xl p-5">
+                <div className="text-[16px] font-semibold">{r.r}</div>
+                <div className="text-[13px] lux-muted">{r.d}</div>
+                <ul className="mt-3 space-y-1.5 text-[13px]">
+                  {PERMS.map((p, i) => <li key={p} className={`flex items-center gap-2 ${r.p[i] ? "" : "lux-muted line-through decoration-[#17140f]/30"}`}><span className={`h-1.5 w-1.5 rounded-full ${r.p[i] ? "bg-gold" : "bg-[#17140f]/20"}`} />{p}</li>)}
+                </ul>
+              </div>
+            ))}
           </div>
         </div>
       </section>

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Logo, LogoMark } from "@/components/Logo";
 import Examples from "@/components/Examples";
+import PlayDemo from "@/components/PlayDemo";
 
 const I = {
   doc: "M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M9 13h6M9 17h4",
@@ -88,11 +89,12 @@ export default function Landing() {
         </div>
         <div id="demo" className="mx-auto max-w-4xl px-5 pb-10">
           <div className="mb-5 flex flex-wrap items-center justify-center gap-3">
-            <a href="#try" className="rounded-full bg-gold px-7 py-3.5 text-[16px] font-medium text-white shadow-[0_10px_30px_-12px_rgba(36,72,216,.7)] hover:bg-[#1c3bb8]">Try the actual product →</a>
-            <Link href="/app" className="rounded-full border border-[#17140f]/25 px-6 py-3.5 text-[15px] font-medium hover:border-[#17140f]">Upload your own agreement</Link>
+            <PlayDemo />
+            <a href="#try" className="rounded-full border-2 border-gold px-6 py-3 text-[15px] font-medium text-gold hover:bg-gold hover:text-white">Try the actual product →</a>
+            <Link href="/app" className="rounded-full border border-[#17140f]/25 px-6 py-3.5 text-[15px] font-medium hover:border-[#17140f]">Upload your own</Link>
           </div>
           <div className="overflow-hidden rounded-2xl border lux-line bg-white p-2 shadow-[0_30px_70px_-35px_rgba(14,26,70,.45)] md:p-3">
-            <video src="/demo.mp4" poster="/demo-poster.jpg" controls playsInline preload="metadata" className="block aspect-video w-full rounded-xl bg-[#f4efe6]" />
+            <video id="demo-video" src="/demo.mp4" poster="/demo-poster.jpg" controls playsInline preload="metadata" className="block aspect-video w-full rounded-xl bg-[#f4efe6]" />
           </div>
           <p className="mt-3 text-center text-[13px] lux-muted">1-minute demo, sound on · No login · Free for your first 3 vendors</p>
         </div>

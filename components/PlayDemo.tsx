@@ -10,7 +10,7 @@ export default function PlayDemo() {
       }}
       className="rounded-full bg-gold px-7 py-3.5 text-[16px] font-medium text-white shadow-[0_10px_30px_-12px_rgba(36,72,216,.7)] hover:bg-[#1c3bb8]"
     >
-      ▶ Watch the full journey (1 min)
+      ▶ See how it works · 1 min
     </button>
   );
 }

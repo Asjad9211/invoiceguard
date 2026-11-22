@@ -42,8 +42,8 @@ export function gstCheck(inv: Invoice, buyerGstinFallback: string | undefined, o
     else out.push({ level: "warn", title: "Tax type not shown", detail: `Invoice shows GST without the split. For ${route} it should be ${inter ? "IGST" : "CGST + SGST"}.` });
   }
 
-  if (rate && Math.abs(rate - 18) > 0.5) out.push({ level: "warn", title: `GST charged at ${rate}%`, detail: `${inv.sac ? "SAC " + inv.sac + ". " : ""}Many IT and digital services are taxed at 18%. Confirm the SAC code and rate with your tax team.` });
-  else if (rate) out.push({ level: "ok", title: `GST charged at ${rate}%`, detail: `${inv.sac ? "SAC " + inv.sac + ". " : ""}Confirm the SAC code matches the service if unsure.` });
+  if (rate && Math.abs(rate - 18) > 0.5) out.push({ level: "warn", title: `GST rate on invoice: ${rate}%`, detail: `${inv.sac ? "SAC " + inv.sac + ". " : ""}Many IT and digital services are taxed at 18%. Confirm the SAC code and rate with your tax team.` });
+  else if (rate) out.push({ level: "ok", title: `GST rate on invoice: ${rate}%`, detail: `${inv.sac ? "SAC " + inv.sac + ". " : ""}The correct rate depends on the service classification. Your tax team should confirm it.` });
 
   if (inv.subtotal && tax && rate && Math.abs(tax - inv.subtotal * (rate / 100)) > 2) out.push({ level: "risk", title: "Tax doesn't add up", detail: `${rate}% of ${inr(inv.subtotal)} = ${inr(round(inv.subtotal * rate / 100))}, but the invoice shows ${inr(tax)}.` });
 

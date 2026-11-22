@@ -37,6 +37,19 @@ function findSlab(slabs: Slab[], q: number): Slab | undefined {
   return slabs.find((s) => q >= s.from && (s.to === null || q <= s.to));
 }
 
+/** Returns a problem with the slab table, or null if ranges are continuous and non-overlapping. */
+export function slabIssue(item: CostItem): string | null {
+  const s = [...(item.pricing.slabs || [])].sort((a, b) => a.from - b.from);
+  if (item.pricing.mode !== "volume" && item.pricing.mode !== "graduated") return null;
+  for (let i = 1; i < s.length; i++) {
+    const prevTo = s[i - 1].to;
+    if (prevTo === null) return "A slab with no upper limit is followed by another slab";
+    if (s[i].from > prevTo + 1) return `Gap between ${prevTo} and ${s[i].from}`;
+    if (s[i].from < prevTo) return `Slabs overlap around ${s[i].from}`;
+  }
+  return null;
+}
+
 export function round(n: number) {
   return Math.round(n * 100) / 100;
 }
@@ -101,6 +114,10 @@ export function checkInvoice(invoice: Invoice, items: CostItem[]) {
   const rows: LineCheck[] = [];
   for (const l of invoice.lines || []) {
     const item = items.find((i) => i.id === l.costItemId);
+    if (!item && (l.amount || 0) < 0) {
+      rows.push({ costItemId: null, description: l.description, invoicedQty: l.quantity, invoicedAmount: l.amount, actualQty: null, expectedAmount: l.amount, diff: 0, status: "fixed", flags: ["Credit or adjustment applied by the vendor"] });
+      continue;
+    }
     if (!item) {
       rows.push({ costItemId: null, description: l.description, invoicedQty: l.quantity, invoicedAmount: l.amount, actualQty: null, expectedAmount: null, diff: null, status: "unmatched", flags: ["Not found in the agreement. Check if it was approved separately before paying."] });
       continue;
@@ -113,6 +130,8 @@ export function checkInvoice(invoice: Invoice, items: CostItem[]) {
   }
   for (const { item, qty, amount, desc } of groups.values()) {
     const flags: string[] = [];
+    const si = slabIssue(item);
+    if (si) flags.push(`Slab table needs checking (${si}). Confirm the slabs in step 1 before relying on this amount.`);
     const atBilledQty = costFor(item, qty);
     const rateGap = round(amount - atBilledQty);
     if (Math.abs(rateGap) > 1) flags.push(`Rate mismatch: at agreed rates ${fmtN(qty)} units = ${inr(atBilledQty)}, billed ${inr(round(amount))}`);

@@ -2,7 +2,7 @@
 
 import { Component, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { Agreement, CostItem, Invoice, Vendor } from "@/lib/types";
-import { checkInvoice, cliffInsight, cliffZones, costFor, fmtN, inr, round } from "@/lib/calc";
+import { checkInvoice, cliffInsight, cliffZones, costFor, fmtN, inr, round, slabIssue } from "@/lib/calc";
 import { gstCheck } from "@/lib/gst";
 import { parseCSV, applyRule, validateRule, distinctValues, type UsageRule } from "@/lib/usage";
 import { computeAlerts, monthLabel } from "@/lib/alerts";
@@ -164,7 +164,7 @@ export default function Home() {
         supplierGstin: raw.supplierGstin ? str(raw.supplierGstin) : null, buyerGstin: raw.buyerGstin ? str(raw.buyerGstin) : null, sac: raw.sac ? str(raw.sac) : null,
         taxLines: (Array.isArray(raw.taxLines) ? raw.taxLines : []).map((t) => ({ type: (str(t.type).toUpperCase() as "IGST" | "CGST" | "SGST" | "GST"), ratePct: num(t.ratePct), amount: num(t.amount) })),
       };
-      update((x) => ({ ...x, invoice: inv, status: "ready", verdict: undefined, history: x.invoice ? [...(x.history || []), { invoiceNo: x.invoice.invoiceNo, date: x.invoice.date, total: x.invoice.total, status: x.status }] : x.history }));
+      update((x) => ({ ...x, invoice: inv, status: "ready", verdict: undefined, history: x.invoice ? [...(x.history || []), { invoiceNo: x.invoice.invoiceNo, date: x.invoice.date, total: x.invoice.total, status: x.status, gstin: x.invoice.supplierGstin }] : x.history }));
       setVerdict(null);
     } catch (e) {
       setErr(String(e));
@@ -181,7 +181,7 @@ export default function Home() {
     setAlerts(computeAlerts(vendors));
     setMonth(monthLabel());
   }, [vendors]);
-  const dupInvoice = !!(v?.invoice && (v.history || []).some((h) => h.invoiceNo && h.invoiceNo === v.invoice!.invoiceNo));
+  const dupInvoice = !!(v?.invoice && (v.history || []).some((h) => (h.invoiceNo && h.invoiceNo === v.invoice!.invoiceNo) || (h.total === v.invoice!.total && h.date === v.invoice!.date && (h.gstin || "") === (v.invoice!.supplierGstin || ""))));
   const gst = useMemo(() => (v?.invoice && check ? gstCheck(v.invoice, org.gstin, check.atRisk) : null), [v, check, org.gstin]);
 
   async function runDispute() {
@@ -213,7 +213,7 @@ export default function Home() {
   const notStated = items.flatMap((c) => c.questions.filter((q) => q.answer && /not stated/i.test(q.answer)).map((q) => ({ item: c.name, q: q.text })));
 
   return (
-    <div className="app-bg flex h-dvh flex-col text-[14px] text-ink">
+    <div className="flex h-dvh flex-col bg-[#f6f5f2] text-[14px] text-ink">
       {/* top bar */}
       <header className="flex h-14 shrink-0 items-center gap-3 border-b border-line bg-white px-4">
         <Link href="/" aria-label="Home"><Logo /></Link>
@@ -250,8 +250,8 @@ export default function Home() {
 
       <div className="flex min-h-0 flex-1 flex-col md:flex-row">
         {/* vendor rail */}
-        <aside className="flex shrink-0 flex-col gap-1 bg-ink p-3 text-white md:w-64">
-          <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg bg-cobalt px-3 py-2.5 font-medium text-white hover:bg-[#2148e0]">
+        <aside className="flex shrink-0 flex-col gap-1 bg-[#050505] p-3 text-white md:w-64">
+          <label className="flex cursor-pointer items-center justify-center gap-2 rounded-full bg-white px-3 py-2.5 font-medium text-black hover:bg-white/90">
             <span className="text-lg leading-none">+</span> Add vendor
             <input type="file" accept=".pdf,.docx,.txt,.png,.jpg,.jpeg,.webp" className="hidden" onChange={async (e) => { const f = e.target.files?.[0]; e.target.value = ""; if (!f) return; try { setStage(f.name); addAgreement(await fileToDoc(f)); } catch (x) { setErr(String(x)); } }} />
           </label>
@@ -290,7 +290,7 @@ export default function Home() {
             <>
               {/* vendor header + stepper */}
               <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b border-zinc-200 bg-white px-3 py-1.5">
-                <div className="flex items-center gap-2"><span className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-cobalt to-violet font-display text-sm font-bold text-white">{v.agreement.vendor.slice(0, 1)}</span><span className="font-display text-[17px] font-semibold">{v.agreement.vendor}</span></div>
+                <div className="flex items-center gap-2"><span className="grid h-8 w-8 place-items-center rounded-lg bg-black font-serif text-sm font-bold text-white">{v.agreement.vendor.slice(0, 1)}</span><span className="font-serif text-[24px] leading-none">{v.agreement.vendor}</span></div>
                 <div className="text-zinc-500">{v.agreement.service} · {v.agreement.period}</div>
                 <div className="ml-auto flex overflow-hidden rounded-lg border border-line bg-white p-0.5">
                   {([
@@ -298,7 +298,7 @@ export default function Home() {
                     [2, `Who checks ${setupDone}/${items.length}`],
                     [3, v.invoice ? (check && check.atRisk > 0 ? `Invoice · ${inr(check.atRisk)} at risk` : missingUsage ? "Invoice · usage needed" : v.status === "approved" ? "Invoice ✓" : "Invoice") : "Invoice"],
                   ] as [Step, string][]).map(([s, label]) => (
-                    <button key={s} onClick={() => setStep(s)} className={`rounded-md px-3 py-1.5 font-medium transition-colors ${step === s ? "bg-gradient-to-r from-cobalt to-violet text-white shadow-sm" : "text-slate hover:bg-paper hover:text-ink"}`}>
+                    <button key={s} onClick={() => setStep(s)} className={`rounded-md px-3 py-1.5 font-medium transition-colors ${step === s ? "bg-black text-white" : "text-slate hover:bg-paper hover:text-ink"}`}>
                       {s} {label}
                     </button>
                   ))}
@@ -363,6 +363,7 @@ export default function Home() {
                                   {c.freeUnits ? ` · ${fmtN(c.freeUnits)} free` : ""}
                                   {c.minCommitment ? ` · min ${inr(c.minCommitment)}` : ""}
                                 </div>
+                                {slabIssue(c) && <div className="mt-1 rounded bg-risk-50 px-1.5 py-0.5 text-[11px] text-risk">Slab table needs checking: {slabIssue(c)}</div>}
                                 {zones.map((z, i) => (
                                   <div key={i} className="mt-1 rounded bg-amber-50 px-1.5 py-0.5 text-[11px] text-amber-900">
                                     Slab trap: between {fmtN(z.start)} and {fmtN(z.slabStart - 1)} units you pay more than at {fmtN(z.slabStart)}.
@@ -391,11 +392,11 @@ export default function Home() {
                   <div className="space-y-3 p-4">
                     <div className="flex flex-wrap items-center gap-2">
                       <div>
-                        <div className="font-display text-[17px] font-semibold">Who checks what</div>
+                        <div className="font-serif text-[26px] leading-none">Who checks what</div>
                         <p className="text-slate">One owner per charge, and the data they trust. Upload a usage export and we work out how to count it.</p>
                       </div>
                       <div className="ml-auto flex flex-wrap gap-2">
-                        <label className="cursor-pointer rounded-md bg-cobalt px-3 py-2 font-medium text-white hover:bg-[#2148e0]">
+                        <label className="cursor-pointer rounded-md bg-black px-4 py-2 font-medium text-white hover:bg-black/85">
                           Import usage file (CSV)
                           <input type="file" accept=".csv,.txt" className="hidden" onChange={async (e) => { const f = e.target.files?.[0]; if (f) importUsage(await f.text(), f.name); e.target.value = ""; }} />
                         </label>
@@ -486,7 +487,7 @@ export default function Home() {
                 {step === 3 && (
                   <div className="space-y-3 p-4">
                     <div className="flex flex-wrap items-center gap-2">
-                      <label className="cursor-pointer rounded-md bg-cobalt px-3 py-2 font-medium text-white hover:bg-[#2148e0]">
+                      <label className="cursor-pointer rounded-md bg-black px-4 py-2 font-medium text-white hover:bg-black/85">
                         {v.invoice ? "Upload next invoice" : "Upload invoice"}
                         <input type="file" accept=".pdf,.docx,.txt,.png,.jpg,.jpeg,.webp" className="hidden" onChange={async (e) => { const f = e.target.files?.[0]; e.target.value = ""; if (!f) return; try { setStage(f.name); addInvoice(await fileToDoc(f)); } catch (x) { setErr(String(x)); } }} />
                       </label>
@@ -498,7 +499,7 @@ export default function Home() {
                         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-slate">
                           <span className="font-medium text-ink">Invoice {v.invoice.invoiceNo}</span>
                           <span>{v.invoice.date}</span>
-                          {dupInvoice && <span className="rounded bg-risk-50 px-1.5 py-0.5 text-risk">Same invoice number was already checked</span>}
+                          {dupInvoice && <span className="rounded bg-risk-50 px-1.5 py-0.5 text-risk">Possible duplicate: same number, or same vendor, date and amount as an earlier invoice</span>}
                         </div>
                         {(v.disputes || []).filter((d) => d.invoiceNo !== v.invoice!.invoiceNo).length > 0 && (
                           <div className="rounded-lg border border-line bg-white px-3 py-2 text-[13px]"><span className="font-medium">Past disputes with this vendor: </span>{(v.disputes || []).filter((d) => d.invoiceNo !== v.invoice!.invoiceNo).map((d) => `${d.invoiceNo} (${inr(d.amount)}, ${DISPUTE_LABEL[d.status]})`).join(" · ")}</div>
@@ -554,6 +555,7 @@ export default function Home() {
                             </tbody>
                           </table>
                         </div>
+                        {v.agreement.agreementMinimum && check.expectedSubtotal < v.agreement.agreementMinimum && check.pending === 0 ? <div className="rounded-lg border border-line border-l-4 border-l-sun bg-white px-3 py-2 text-[13px]">The agreement has a minimum of {inr(v.agreement.agreementMinimum)} a month. Confirmed charges are {inr(check.expectedSubtotal)}, so a shortfall of {inr(round(v.agreement.agreementMinimum - check.expectedSubtotal))} may be billed.</div> : null}
                         <GstPanel inv={v.invoice} buyer={org.gstin} overbilled={check.atRisk} />
                         <Issues
                           issues={buildIssues(check.lines, gst?.findings || [], dupInvoice)}
@@ -574,7 +576,7 @@ export default function Home() {
                               </span>
                               
                               {(check.atRisk > 0 || check.unmatched > 0) && <button onClick={() => update((x) => ({ ...x, status: "disputed", disputes: [...(x.disputes || []).filter((d) => d.invoiceNo !== (x.invoice?.invoiceNo || "")), { invoiceNo: x.invoice?.invoiceNo || "", date: x.invoice?.date || "", amount: check.atRisk + check.unmatched, status: "open" }] }))} className="rounded-md bg-risk px-3 py-2 font-semibold text-white">Mark as disputed</button>}
-                              <button disabled={check.pending > 0} onClick={() => update((x) => ({ ...x, status: "approved" }))} className={`rounded-md px-3 py-2 font-semibold ${check.atRisk > 0 || check.unmatched > 0 ? "border border-line" : "bg-cobalt text-white"} disabled:opacity-40`}>
+                              <button disabled={check.pending > 0} onClick={() => update((x) => ({ ...x, status: "approved" }))} className={`rounded-md px-3 py-2 font-semibold ${check.atRisk > 0 || check.unmatched > 0 ? "border border-line" : "bg-black text-white"} disabled:opacity-40`}>
                                 Approve {inr(check.atRisk > 0 ? check.expectedSubtotal : v.invoice.subtotal)} + GST
                               </button>
                             </>
@@ -616,12 +618,12 @@ class Safe extends Component<{ children: ReactNode }, { err: string | null }> {
 }
 
 function Stat({ label, value, tone, sub }: { label: string; value: string; tone?: "good" | "bad" | "warn"; sub?: string }) {
-  const t = tone === "bad" ? "border-l-coral bg-white" : tone === "warn" ? "border-l-sun bg-white" : tone === "good" ? "border-l-teal bg-white" : "border-l-cobalt bg-white";
+  const t = tone === "bad" ? "border-l-coral bg-white" : tone === "warn" ? "border-l-sun bg-white" : tone === "good" ? "border-l-teal bg-white" : "border-l-black bg-white";
   const c = tone === "bad" ? "text-risk" : tone === "warn" ? "text-amber" : tone === "good" ? "text-ok" : "text-ink";
   return (
     <div className={`fadeup rounded-xl border border-line border-l-4 px-3.5 py-2.5 shadow-sm ${t}`}>
       <div className="text-[11px] font-medium uppercase tracking-wide text-slate">{label}</div>
-      <div className={`tnum font-display text-xl font-semibold ${c}`}>{value}</div>
+      <div className={`tnum font-serif text-[28px] leading-tight ${c}`}>{value}</div>
       {sub && <div className={`text-[12px] ${c}`}>{sub}</div>}
     </div>
   );
@@ -803,7 +805,7 @@ function Reading({ label, file }: { label: string; file: string }) {
         <ol className="mt-4 space-y-2">
           {steps.map((s, k) => (
             <li key={s} className={`flex items-center gap-2 text-[14px] transition-opacity ${k > i ? "opacity-40" : ""}`}>
-              <span className={`grid h-5 w-5 place-items-center rounded-full text-[11px] ${k < i ? "bg-cobalt text-white" : k === i ? "border-2 border-cobalt" : "border border-line"}`}>{k < i ? "✓" : ""}</span>
+              <span className={`grid h-5 w-5 place-items-center rounded-full text-[11px] ${k < i ? "bg-black text-white" : k === i ? "border-2 border-cobalt" : "border border-line"}`}>{k < i ? "✓" : ""}</span>
               {s}
             </li>
           ))}
@@ -868,7 +870,7 @@ function Dashboard({ vendors, open, setDispute, remove }: { vendors: Vendor[]; o
   if (!vendors.length) return (
     <div className="grid flex-1 place-items-center p-6 text-center">
       <div className="max-w-md space-y-2 text-slate">
-        <div className="font-display text-xl font-semibold text-ink">Add your first vendor</div>
+        <div className="font-serif text-[40px] leading-none text-ink">Add your first vendor</div>
         <div>Upload a vendor agreement, order form or rate card: PDF, Word, a scan or a photo. We read it, list every charge and liability, and run your checklist.</div>
       </div>
     </div>
@@ -883,7 +885,7 @@ function Dashboard({ vendors, open, setDispute, remove }: { vendors: Vendor[]; o
   const recovered = vendors.flatMap((v) => v.disputes || []).filter((d) => d.status === "credit_note" || d.status === "corrected").reduce((s, d) => s + d.amount, 0);
   return (
     <div className="min-h-0 flex-1 space-y-3 overflow-auto p-4">
-      <div className="font-display text-[19px] font-semibold">All vendors</div>
+      <div className="font-serif text-[32px] leading-none">All vendors</div>
       <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
         <Stat label="Vendors" value={String(vendors.length)} />
         <Stat label="Latest invoices, incl. GST" value={inr(round(billed))} />

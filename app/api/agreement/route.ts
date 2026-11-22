@@ -28,6 +28,7 @@ const INSTRUCTION = `Read the vendor agreement and return JSON with this exact s
                                    // one entry per item in the CHECKLIST below, in the same order; detail = what the document says, or what is missing
   "keyTerms": [{ "kind": "payment"|"dispute"|"penalty"|"free_period"|"renewal"|"billing_start"|"other", "label": string, "detail": string, "days": number|null }],
                                    // payment terms (days to pay), dispute window (days), late payment penalty/interest, free credit or free trial period, renewal/notice, when billing starts. Plain words.
+  "agreementMinimum": number|null, // minimum monthly billing across the whole agreement in rupees, if any; null if none or waived
   "invoiceDay": number|null,       // day of month the invoice is expected, e.g. 5 if "invoices raised at the start of each month"; null if not stated
   "costItems": [{
     "id": string,                  // short slug, e.g. "sms_txn"

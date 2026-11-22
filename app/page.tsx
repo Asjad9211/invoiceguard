@@ -89,8 +89,28 @@ export default function Landing() {
           <div className="mt-9 flex flex-wrap justify-center gap-3">
             <Link href="/signup" className="rounded-full bg-gold px-6 py-3 text-[15px] font-medium text-white shadow-[0_10px_30px_-12px_rgba(36,72,216,.7)] hover:bg-[#1c3bb8]">Start free</Link>
             <Link href="/app" className="rounded-full border border-[#17140f]/25 px-6 py-3 text-[15px] font-medium hover:border-[#17140f]">Upload an agreement <span aria-hidden>→</span></Link>
+            <a href="#demo" className="rounded-full border border-[#17140f]/25 px-6 py-3 text-[15px] font-medium hover:border-[#17140f]">▶ Watch 1-min demo</a>
           </div>
           <p className="mt-5 text-[13px] lux-muted">Free for your first 3 vendors. No card needed.</p>
+        </div>
+        <div id="demo" className="mx-auto max-w-5xl px-5 pb-12">
+          <div className="grid gap-5 md:grid-cols-[1.4fr_1fr]">
+            <div className="overflow-hidden rounded-2xl border lux-line bg-white">
+              <video src="/demo.mp4" poster="/demo-poster.jpg" controls playsInline preload="metadata" className="block aspect-video w-full" />
+              <div className="px-4 py-3 text-left text-[14px] lux-muted">Watch the 1-minute product tour (sound on)</div>
+            </div>
+            <div className="rounded-2xl border lux-line bg-white p-5 text-left">
+              <div className="text-[18px] font-semibold">Try it yourself in 2 minutes</div>
+              <p className="mt-1 text-[14px] lux-muted">Sample files for a made-up vendor, Nimbus KYC. No login needed.</p>
+              <ol className="mt-4 space-y-3 text-[14px]">
+                <li><span className="font-semibold">1.</span> Download the <a className="text-gold underline" href="/samples/nimbus-kyc-agreement.pdf" download>sample agreement</a> and open the app. Tap <b>Add vendor</b> and upload it.</li>
+                <li><span className="font-semibold">2.</span> Go to <b>Invoice</b> and upload the <a className="text-gold underline" href="/samples/nimbus-kyc-invoice-oct-2026.pdf" download>sample invoice</a>.</li>
+                <li><span className="font-semibold">3.</span> In <b>Who checks</b>, import the <a className="text-gold underline" href="/samples/nimbus-usage-oct-2026.csv" download>usage file</a> (1,140 completed of 1,200 billed), or type 1,140 as confirmed.</li>
+                <li><span className="font-semibold">4.</span> See the overbilling, GST check, email drafts and the approval lock.</li>
+              </ol>
+              <Link href="/app" className="mt-5 inline-block rounded-full bg-gold px-5 py-2.5 text-[14px] font-medium text-white hover:bg-[#1c3bb8]">Open the app →</Link>
+            </div>
+          </div>
         </div>
         <div className="mx-auto max-w-3xl px-5 pb-14">
           <Examples />

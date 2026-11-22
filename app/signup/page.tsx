@@ -9,7 +9,7 @@ import { isValidGstin } from "@/lib/gst";
 
 export default function Signup() {
   const router = useRouter();
-  const [f, setF] = useState({ company: "", gstin: "", name: "", email: "", plan: "Team" });
+  const [f, setF] = useState({ company: "", gstin: "", name: "", email: "", plan: "Free" });
   const [touched, setTouched] = useState(false);
   const gstOk = !f.gstin || isValidGstin(f.gstin);
   const ok = f.company && f.name && /.+@.+\..+/.test(f.email) && gstOk;
@@ -29,21 +29,21 @@ export default function Signup() {
       <div className="hidden flex-col justify-between bg-ink p-10 text-white md:flex">
         <Link href="/"><Logo dark /></Link>
         <div>
-          <div className="font-display text-4xl font-semibold leading-tight tracking-tight">Every vendor bill,<br />checked before it's paid.</div>
+          <div className="font-display text-4xl font-semibold leading-tight tracking-tight">Check every vendor bill<br />before you pay it.</div>
           <ul className="mt-6 space-y-2 text-white/75">
-            <li>· Agreements turned into clear cost rules</li>
-            <li>· One owner and one source of truth per cost</li>
-            <li>· Usage, slab and GST checks on every invoice</li>
+            <li>· See every charge in your vendor agreements</li>
+            <li>· Give each charge an owner who confirms usage</li>
+            <li>· Check usage, rates and GST on every invoice</li>
           </ul>
         </div>
-        <div className="font-mono text-[11px] text-white/50">14-day free trial · no card</div>
+        <div className="font-mono text-[11px] text-white/50">Free for 3 vendors · no card needed</div>
       </div>
       <div className="flex items-center justify-center p-6">
         <form onSubmit={submit} className="w-full max-w-sm space-y-4" noValidate>
           <div className="md:hidden"><Link href="/"><Logo /></Link></div>
           <div>
             <h1 className="font-display text-2xl font-semibold">Create your company</h1>
-            <p className="text-sm text-slate">You'll be the Admin. Invite your team next.</p>
+            <p className="text-sm text-slate">You'll be the Admin. You can invite your team after this.</p>
           </div>
           <label className="block text-sm font-medium">Company name
             <input className={field} value={f.company} onChange={(e) => setF({ ...f, company: e.target.value })} placeholder="Acme Finserv Pvt Ltd" autoComplete="organization" />
@@ -61,7 +61,7 @@ export default function Signup() {
           <fieldset>
             <legend className="text-sm font-medium">Plan</legend>
             <div className="mt-1 grid grid-cols-3 gap-2">
-              {[["Team", "$19"], ["Growth", "$79"], ["Enterprise", "Custom"]].map(([p, price]) => (
+              {[["Free", "3 vendors"], ["Team", "$19, 1 month free"], ["Business", "Talk to us"]].map(([p, price]) => (
                 <button type="button" key={p} onClick={() => setF({ ...f, plan: p })} className={`rounded-md border px-2 py-2 text-left text-sm ${f.plan === p ? "border-cobalt bg-cobalt-50" : "border-line"}`}>
                   <div className="font-medium">{p}</div><div className="text-[12px] text-slate">{price}</div>
                 </button>
@@ -69,8 +69,8 @@ export default function Signup() {
             </div>
           </fieldset>
           {touched && !ok && <p className="text-[13px] text-risk">Please fill company, name and a valid work email.</p>}
-          <button className="w-full rounded-md bg-cobalt px-4 py-3 font-medium text-white hover:bg-[#2148e0]">Create company & continue</button>
-          <p className="text-center text-[12px] text-slate">Demo build: your company is stored in this browser only. <Link href="/app" className="underline">Skip and try the demo</Link></p>
+          <button className="w-full rounded-md bg-cobalt px-4 py-3 font-medium text-white hover:bg-[#2148e0]">Create company</button>
+          <p className="text-center text-[13px] text-slate">Just looking? <Link href="/app" className="underline">Try it with a sample agreement</Link></p>
         </form>
       </div>
     </div>

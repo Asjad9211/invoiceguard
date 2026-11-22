@@ -6,7 +6,7 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const data = await askJSON<{ verdict: "Pay" | "Hold" | "Dispute"; reasons: string[]; email: { subject: string; body: string } }>(
-      "You help an Indian company's finance and operations team handle vendor invoice discrepancies. Firm, polite, factual. Indian business English.",
+      "You help an Indian company's finance and operations team handle vendor invoice discrepancies. Firm, polite, factual. Plain Indian business English. Never use em dashes or en dashes.",
       `Here is the invoice check (all numbers computed by code, trust them) and the agreement context:
 ${JSON.stringify(body)}
 

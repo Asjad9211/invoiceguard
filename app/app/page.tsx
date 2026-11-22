@@ -54,7 +54,7 @@ function sampleQty(key: SampleKey, item: CostItem): number | undefined {
 
 function rateText(c: CostItem) {
   const s = c.pricing.slabs;
-  if (!s?.length) return "—";
+  if (!s?.length) return "-";
   if (c.pricing.mode === "fixed") return `${inr(s[0].rate)} / period`;
   if (s.length === 1) return `${inr(s[0].rate)} / ${c.unit}`;
   return s.map((x) => `${fmtN(x.from)}${x.to ? "–" + fmtN(x.to) : "+"}: ${inr(x.rate)}`).join(" · ");
@@ -70,6 +70,7 @@ export default function Home() {
   const [sampleOf, setSampleOf] = useState<Record<string, SampleKey>>({});
   const [org, setOrg] = useState<Org>(DEMO_ORG);
   const [teamOpen, setTeamOpen] = useState(false);
+  const [showCompare, setShowCompare] = useState(false);
   const [welcome, setWelcome] = useState(false);
   useEffect(() => {
     const o = loadOrg();
@@ -170,7 +171,7 @@ export default function Home() {
           ...c,
           actualQty: c.actualQty ?? sampleQty(key, c) ?? 0,
           owner: c.owner || (/(kyc|aadhaar|pan|face|video)/i.test(c.name + c.category) ? (org.members[2]?.name || "Rohan (Onboarding PM)") : (org.members[1]?.name || "Priya (Marketing Ops)")),
-          sourceNote: c.sourceNote || (c.pricing.mode === "fixed" ? "Agreement — fixed fee" : "Vendor dashboard export, cross-checked with our delivery logs"),
+          sourceNote: c.sourceNote || (c.pricing.mode === "fixed" ? "Fixed fee in the agreement" : "Vendor dashboard export, cross-checked with our delivery logs"),
         })),
       },
     }));
@@ -182,13 +183,13 @@ export default function Home() {
   const notStated = items.flatMap((c) => c.questions.filter((q) => q.answer && /not stated/i.test(q.answer)).map((q) => ({ item: c.name, q: q.text })));
 
   return (
-    <div className="flex h-dvh flex-col bg-paper text-[13px] text-ink">
+    <div className="flex h-dvh flex-col bg-paper text-[14px] text-ink">
       {/* top bar */}
       <header className="flex h-12 shrink-0 items-center gap-3 border-b border-line bg-white px-3">
         <Link href="/" aria-label="Home"><Logo /></Link>
-        <span className="hidden text-slate lg:inline">Know what you should pay — before you pay it.</span>
+        
         <div className="ml-auto flex items-center gap-2">
-          <span className="hidden rounded bg-amber-50 px-1.5 py-0.5 text-[11px] text-amber sm:inline">Demo · sample data is illustrative</span>
+          
           <button onClick={() => setTeamOpen(true)} className="flex items-center gap-1.5 rounded-md border border-line px-2 py-1 hover:bg-paper">
             <span className="grid h-5 w-5 place-items-center rounded-full bg-ink text-[10px] font-semibold text-white">{org.name.slice(0, 1)}</span>
             <span className="max-w-[140px] truncate font-medium">{org.name}</span>
@@ -202,7 +203,7 @@ export default function Home() {
       <div className="flex min-h-0 flex-1 flex-col md:flex-row">
         {/* vendor rail */}
         <aside className="flex shrink-0 flex-col gap-1 border-b border-zinc-200 bg-white p-2 md:w-60 md:border-b-0 md:border-r">
-          <div className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">Vendors</div>
+          <div className="px-1 pt-1 text-[11px] font-medium uppercase tracking-wide text-slate">Your vendors</div>
           <label className="cursor-pointer rounded border border-dashed border-zinc-300 px-2 py-1.5 text-center hover:bg-paper">
             + Upload agreement or any doc (PDF / TXT)
             <input type="file" accept=".pdf,.txt" className="hidden" onChange={async (e) => { const f = e.target.files?.[0]; if (f) addAgreement(await fileToDoc(f)); e.target.value = ""; }} />
@@ -210,7 +211,7 @@ export default function Home() {
           <div className="flex gap-1">
             {(Object.keys(SAMPLES) as SampleKey[]).map((k) => (
               <button key={k} disabled={!!busy} onClick={() => addAgreement({ text: SAMPLES[k].agreement }, k)} className="flex-1 rounded bg-cobalt px-1.5 py-1 text-[12px] font-medium text-white hover:bg-[#2148e0] disabled:opacity-50">
-                Try {k === "messaging" ? "Messaging" : "KYC"}
+                {k === "messaging" ? "Sample: SMS & email" : "Sample: KYC"}
               </button>
             ))}
           </div>
@@ -228,7 +229,7 @@ export default function Home() {
             })}
           </div>
           <div className="mt-auto hidden space-y-0.5 text-[11px] text-zinc-400 md:block">
-            <div>Coming soon: email inbox fetch · API integrations · Tally sync</div>
+            <div>Coming soon: invoices from email, usage from vendor APIs, Tally export</div>
           </div>
         </aside>
 
@@ -252,14 +253,14 @@ export default function Home() {
               <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b border-zinc-200 bg-white px-3 py-1.5">
                 <div className="font-semibold">{v.agreement.vendor}</div>
                 <div className="text-zinc-500">{v.agreement.service} · {v.agreement.period}</div>
-                <div className="ml-auto flex overflow-hidden rounded border border-zinc-200">
+                <div className="ml-auto flex overflow-hidden rounded-lg border border-line bg-white p-0.5">
                   {([
-                    [1, `Understand${openQs ? ` (${openQs}?)` : " ✓"}`],
-                    [2, `Source of truth ${setupDone}/${items.length}`],
+                    [1, `Understand${openQs ? ` · ${openQs} to answer` : " ✓"}`],
+                    [2, `Who checks ${setupDone}/${items.length}`],
                     [3, v.invoice ? (check && check.atRisk > 0 ? `Invoice · ${inr(check.atRisk)} at risk` : "Invoice ✓") : "Invoice"],
                   ] as [Step, string][]).map(([s, label]) => (
-                    <button key={s} onClick={() => setStep(s)} className={`px-2.5 py-1 ${step === s ? "bg-ink text-white" : "bg-white hover:bg-paper"}`}>
-                      {s}. {label}
+                    <button key={s} onClick={() => setStep(s)} className={`rounded-md px-3 py-1.5 font-medium ${step === s ? "bg-ink text-white" : "text-slate hover:bg-paper hover:text-ink"}`}>
+                      {s} {label}
                     </button>
                   ))}
                 </div>
@@ -272,17 +273,17 @@ export default function Home() {
                     {(v.agreement.risks?.length > 0 || notStated.length > 0) && (
                       <div className="flex flex-wrap gap-1">
                         {v.agreement.risks?.map((r, i) => <span key={i} className="rounded bg-orange-50 px-1.5 py-0.5 text-orange-800">⚠ {r}</span>)}
-                        {notStated.map((n, i) => <span key={"n" + i} className="rounded bg-red-50 px-1.5 py-0.5 text-red-800">Negotiate: {n.item} — not stated</span>)}
+                        {notStated.map((n, i) => <span key={"n" + i} className="rounded bg-red-50 px-1.5 py-0.5 text-red-800">Not stated: {n.item}</span>)}
                       </div>
                     )}
                     {v.agreement.suggestions && v.agreement.suggestions.length > 0 && (
                       <div className="rounded border border-cobalt-100 bg-cobalt-50 p-2">
-                        <div className="mb-0.5 font-semibold text-cobalt">Claude suggests before the next invoice</div>
+                        <div className="mb-0.5 font-semibold text-cobalt">Get these clarified in writing</div>
                         <ul className="list-disc space-y-0.5 pl-4 text-ink-2">{v.agreement.suggestions.map((x, i) => <li key={i}>{x}</li>)}</ul>
                       </div>
                     )}
-                    <table className="w-full border-collapse bg-white">
-                      <thead className="text-left text-[11px] uppercase text-zinc-500">
+                    <table className="w-full border-collapse overflow-hidden rounded-lg bg-white ring-1 ring-line">
+                      <thead className="text-left text-[11px] uppercase tracking-wide text-slate bg-paper">
                         <tr className="border-b border-zinc-200">
                           <th className="px-2 py-1">Cost item</th>
                           <th className="px-2 py-1">When you are charged</th>
@@ -303,11 +304,11 @@ export default function Home() {
                                 <span className={`mr-1 rounded px-1 py-0.5 text-[11px] ${c.billingEvent === "unclear" ? "bg-red-100 text-red-800" : "bg-zinc-100 text-zinc-700"}`}>{EVENT_LABEL[c.billingEvent] || c.billingEvent}</span>
                                 <span className="text-zinc-700">{c.plainEnglish}</span>
                                 {c.questions.map((q) => (
-                                  <div key={q.id} className="mt-1 rounded bg-sky-50 p-1.5">
-                                    <div className="text-sky-900">❓ {q.text}</div>
+                                  <div key={q.id} className="mt-1 rounded-md bg-cobalt-50 p-2">
+                                    <div className="text-ink">❓ {q.text}</div>
                                     <div className="mt-1 flex flex-wrap gap-1">
                                       {q.options.map((o) => (
-                                        <button key={o} onClick={() => updateItem(c.id, { questions: c.questions.map((x) => (x.id === q.id ? { ...x, answer: o } : x)) })} className={`rounded border px-1.5 py-0.5 text-[12px] ${q.answer === o ? "border-sky-700 bg-sky-700 text-white" : "border-sky-200 bg-white hover:bg-sky-100"}`}>
+                                        <button key={o} onClick={() => updateItem(c.id, { questions: c.questions.map((x) => (x.id === q.id ? { ...x, answer: o } : x)) })} className={`rounded-md border px-2 py-1 text-[13px] ${q.answer === o ? "border-cobalt bg-cobalt text-white" : "border-cobalt-100 bg-white hover:border-cobalt"}`}>
                                           {o}
                                         </button>
                                       ))}
@@ -334,7 +335,10 @@ export default function Home() {
                         })}
                       </tbody>
                     </table>
-                    <Compare items={items} />
+                    <Negotiate list={v.agreement.negotiate} />
+                    {showCompare ? <Compare items={items} /> : (
+                      <button onClick={() => setShowCompare(true)} className="rounded-lg border border-line bg-white px-3 py-2 font-medium hover:border-cobalt hover:text-cobalt">Compare my rates with the market</button>
+                    )}
                     <div className="flex justify-end">
                       <button onClick={() => setStep(2)} className="rounded bg-ink px-3 py-1.5 font-medium text-white">Next: who verifies each cost →</button>
                     </div>
@@ -348,8 +352,8 @@ export default function Home() {
                       {sampleOf[v.id] && <button onClick={fillSampleUsage} className="ml-auto rounded border border-cobalt px-2 py-1 text-ok hover:bg-cobalt-50">Fill sample owners &amp; usage</button>}
                     </div>
                     <datalist id="members">{org.members.filter((m) => m.role !== "Viewer").map((m) => <option key={m.id} value={m.name} />)}</datalist>
-                    <table className="w-full border-collapse bg-white">
-                      <thead className="text-left text-[11px] uppercase text-zinc-500">
+                    <table className="w-full border-collapse overflow-hidden rounded-lg bg-white ring-1 ring-line">
+                      <thead className="text-left text-[11px] uppercase tracking-wide text-slate bg-paper">
                         <tr className="border-b border-zinc-200">
                           <th className="px-2 py-1">Cost item</th>
                           <th className="px-2 py-1">Owner</th>
@@ -375,9 +379,9 @@ export default function Home() {
                               </td>
                               <td className="px-2 py-1.5">
                                 <input type="number" value={q ?? ""} onChange={(e) => updateItem(c.id, { actualQty: e.target.value === "" ? undefined : Number(e.target.value) })} placeholder={c.unit} className="w-32 rounded border border-zinc-200 px-1.5 py-1" />
-                                {cl && <div className="mt-1 rounded bg-amber-50 px-1.5 py-0.5 text-[11px] text-amber-900">At {fmtN(q!)} you pay {inr(cl.cost)}. At {fmtN(cl.nextQty)} you'd pay {inr(cl.nextCost)} — {inr(cl.saving)} less. Renegotiate to graduated slabs.</div>}
+                                {cl && <div className="mt-1 rounded bg-amber-50 px-1.5 py-0.5 text-[11px] text-amber-900">At {fmtN(q!)} you pay {inr(cl.cost)}. At {fmtN(cl.nextQty)} you'd pay {inr(cl.nextCost)}, which is {inr(cl.saving)} less. Ask the vendor to switch to graduated slabs.</div>}
                               </td>
-                              <td className="px-2 py-1.5 text-right font-medium">{q !== undefined ? inr(costFor(c, q)) : "—"}</td>
+                              <td className="px-2 py-1.5 text-right font-medium">{q !== undefined ? inr(costFor(c, q)) : "-"}</td>
                             </tr>
                           );
                         })}
@@ -422,8 +426,8 @@ export default function Home() {
                             )}
                           </div>
                         </div>
-                        <table className="w-full border-collapse bg-white">
-                          <thead className="text-left text-[11px] uppercase text-zinc-500">
+                        <table className="w-full border-collapse overflow-hidden rounded-lg bg-white ring-1 ring-line">
+                          <thead className="text-left text-[11px] uppercase tracking-wide text-slate bg-paper">
                             <tr className="border-b border-zinc-200">
                               <th className="px-2 py-1">Invoice line</th>
                               <th className="px-2 py-1 text-right">Billed qty</th>
@@ -441,9 +445,9 @@ export default function Home() {
                                   {l.flags.map((f, j) => <div key={j} className="text-[12px] text-red-700">• {f}</div>)}
                                 </td>
                                 <td className="px-2 py-1.5 text-right">{fmtN(l.invoicedQty)}</td>
-                                <td className="px-2 py-1.5 text-right">{l.actualQty !== null ? fmtN(l.actualQty) : "—"}</td>
+                                <td className="px-2 py-1.5 text-right">{l.actualQty !== null ? fmtN(l.actualQty) : "-"}</td>
                                 <td className="px-2 py-1.5 text-right">{inr(l.invoicedAmount)}</td>
-                                <td className="px-2 py-1.5 text-right">{l.expectedAmount !== null ? inr(l.expectedAmount) : "—"}</td>
+                                <td className="px-2 py-1.5 text-right">{l.expectedAmount !== null ? inr(l.expectedAmount) : "-"}</td>
                                 <td className={`px-2 py-1.5 text-right font-semibold ${l.diff && l.diff > 0 ? "text-red-700" : "text-ok"}`}>{l.diff ? (l.diff > 0 ? "+" : "") + inr(l.diff) : "✓"}</td>
                               </tr>
                             ))}
@@ -483,7 +487,7 @@ export default function Home() {
 function Stat({ label, value, tone }: { label: string; value: string; tone?: "good" | "bad" }) {
   return (
     <div className={`rounded border px-3 py-1.5 ${tone === "bad" ? "border-red-200 bg-red-50" : tone === "good" ? "border-cyan-200 bg-ok-50" : "border-zinc-200 bg-white"}`}>
-      <div className="text-[11px] uppercase text-zinc-500">{label}</div>
+      <div className="text-[11px] uppercase tracking-wide text-slate bg-paper">{label}</div>
       <div className={`text-lg font-bold ${tone === "bad" ? "text-red-700" : tone === "good" ? "text-ok" : ""}`}>{value}</div>
     </div>
   );
@@ -511,7 +515,7 @@ function Compare({ items }: { items: CostItem[] }) {
   if (!rows.length) return null;
   return (
     <div className="rounded border border-zinc-200 bg-white p-2">
-      <div className="mb-1 flex items-center gap-2 font-semibold">Market comparison <span className="text-[11px] font-normal text-zinc-500">Illustrative rates from partner vendors. We never use your data to build benchmarks.</span></div>
+      <div className="mb-1 flex items-center gap-2 font-semibold">Market comparison <span className="text-[12px] font-normal text-slate">Rates from vendors on our network. Your data is never used for this.</span></div>
       <div className="flex flex-wrap gap-1.5">
         {rows.map(({ c, b, yours, saving }) => (
           <div key={c.id} className="rounded bg-paper px-2 py-1">
@@ -535,7 +539,7 @@ function GstPanel({ inv, buyer, base }: { inv: Invoice; buyer: string; base: num
         {g.findings.map((f, i) => (
           <li key={i} className="flex gap-2">
             <span className={`font-mono font-bold ${color[f.level]}`}>{mark[f.level]}</span>
-            <span><span className="font-medium">{f.title}</span> <span className="text-slate">— {f.detail}</span></span>
+            <span><span className="font-medium">{f.title}</span> <span className="text-slate">{f.detail}</span></span>
           </li>
         ))}
       </ul>
@@ -587,12 +591,33 @@ function TeamPanel({ org, setOrg, onClose }: { org: Org; setOrg: (o: Org) => voi
             </select>
             <button onClick={add} className="rounded bg-cobalt px-3 py-1.5 font-medium text-white">Send invite</button>
           </div>
-          <div className="text-[11px] text-slate">Demo: invites are saved in this browser; email delivery coming soon.</div>
+          <div className="text-[11px] text-slate">Email invites are coming soon. For now, share the link with them.</div>
         </div>
         <div className="mt-3">
           <div className="mb-1 font-medium">Roles</div>
-          {(Object.keys(ROLE_INFO) as Role[]).map((r) => <div key={r} className="text-slate"><span className="font-medium text-ink">{r}</span> — {ROLE_INFO[r]}</div>)}
+          {(Object.keys(ROLE_INFO) as Role[]).map((r) => <div key={r} className="text-slate"><span className="font-medium text-ink">{r}:</span> {ROLE_INFO[r]}</div>)}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function Negotiate({ list }: { list?: { type: string; item: string; ask: string; why: string }[] }) {
+  if (!list?.length) return null;
+  return (
+    <div className="rounded-lg border border-line bg-white">
+      <div className="border-b border-line px-3 py-2 font-semibold">What you can negotiate</div>
+      <div className="grid gap-px bg-line md:grid-cols-2">
+        {list.map((n, i) => (
+          <div key={i} className="bg-white p-3">
+            <div className="flex items-center gap-2">
+              <span className="rounded bg-cobalt-50 px-1.5 py-0.5 font-mono text-[11px] text-cobalt">{n.type}</span>
+              <span className="font-medium">{n.item}</span>
+            </div>
+            <div className="mt-1"><span className="text-slate">Ask for:</span> {n.ask}</div>
+            <div className="text-[13px] text-slate">{n.why}</div>
+          </div>
+        ))}
       </div>
     </div>
   );

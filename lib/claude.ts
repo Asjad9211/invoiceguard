@@ -32,7 +32,7 @@ export async function askJSON<T>(system: string, instruction: string, doc?: DocI
       .map((b) => b.text)
       .join("");
     try {
-      return JSON.parse(extractJSON(text)) as T;
+      return JSON.parse(extractJSON(text).replace(/\s*\u2014\s*/g, ", ").replace(/\u2013/g, "-")) as T;
     } catch (e) {
       lastErr = e;
     }

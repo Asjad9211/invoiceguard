@@ -18,7 +18,7 @@ export function gstCheck(inv: Invoice, buyerGstinFallback: string | undefined, e
   const sup = inv.supplierGstin?.toUpperCase().trim();
   const buy = (inv.buyerGstin || buyerGstinFallback || "").toUpperCase().trim();
 
-  if (!sup) out.push({ level: "risk", title: "Supplier GSTIN missing", detail: "Ask the vendor to reissue with their GSTIN — you cannot claim input tax credit without it." });
+  if (!sup) out.push({ level: "risk", title: "Supplier GSTIN missing", detail: "Ask the vendor to reissue it with their GSTIN. You cannot claim input tax credit without it." });
   else if (!isValidGstin(sup)) out.push({ level: "risk", title: "Supplier GSTIN looks invalid", detail: `${sup} does not match the 15-character GSTIN format.` });
   else out.push({ level: "ok", title: "Supplier GSTIN format valid", detail: `${sup} · ${STATES[sup.slice(0, 2)] || "state " + sup.slice(0, 2)}` });
 
@@ -34,7 +34,7 @@ export function gstCheck(inv: Invoice, buyerGstinFallback: string | undefined, e
     const inter = sup.slice(0, 2) !== buy.slice(0, 2);
     const route = `${STATES[sup.slice(0, 2)] || sup.slice(0, 2)} → ${STATES[buy.slice(0, 2)] || buy.slice(0, 2)}`;
     if (inter && (types.has("CGST") || types.has("SGST")))
-      out.push({ level: "risk", title: "Wrong tax type: should be IGST", detail: `Inter-state supply (${route}) must charge IGST, not CGST + SGST. Credit for wrongly charged tax can be denied — ask for a corrected invoice.` });
+      out.push({ level: "risk", title: "Wrong tax type: should be IGST", detail: `Inter-state supply (${route}) must charge IGST, not CGST + SGST. Credit for wrongly charged tax can be denied, so ask for a corrected invoice.` });
     else if (!inter && types.has("IGST"))
       out.push({ level: "risk", title: "Wrong tax type: should be CGST + SGST", detail: `Intra-state supply (${route}) must charge CGST + SGST, not IGST.` });
     else if (types.size)

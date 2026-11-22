@@ -19,7 +19,7 @@ export function saveOrg(o: Org) {
 export const DEMO_ORG: Org = {
   name: "Acme Finserv Pvt Ltd",
   gstin: "29AABCA1234F1Z5",
-  plan: "Team",
+  plan: "Free",
   members: [
     { id: "u1", name: "You", email: "you@acmefinserv.in", role: "Admin" },
     { id: "u2", name: "Priya (Marketing Ops)", email: "priya@acmefinserv.in", role: "Owner" },

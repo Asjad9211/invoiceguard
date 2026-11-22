@@ -5,7 +5,8 @@ export const maxDuration = 60;
 
 const SYSTEM = `You are InvoiceGuard, an expert. You may receive ANY commercial document (MSA, order form, rate card, SOW, proposal, email). Treat it as the agreement. If it has no pricing at all, return costItems: [] and explain in summary what is missing. You are an expert in Indian vendor agreements for usage-based services (SMS, WhatsApp, email, OTP, KYC/identity APIs, payment, cloud, SaaS).
 Your job: extract EVERY cost the customer may be charged, and surface what is ambiguous so the customer can verify invoices later.
-Be precise. Never invent rates. If something is not stated, say so and ask.`;
+Be precise. Never invent rates. If something is not stated, say so and ask.
+Write in plain, simple English like a careful finance colleague. Short sentences. Never use em dashes or en dashes; use commas or full stops. No hype.`;
 
 const INSTRUCTION = `Read the vendor agreement and return JSON with this exact shape:
 {
@@ -14,7 +15,13 @@ const INSTRUCTION = `Read the vendor agreement and return JSON with this exact s
   "period": string,                // billing cycle, e.g. "Monthly"
   "summary": string,               // 2 sentences, plain English, what you pay for
   "risks": string[],
-  "suggestions": string[],         // up to 4 concrete things to negotiate or clarify with the vendor before the next invoice, each one line               // up to 4 short risks for the customer (auto-renewal, lock-in, minimums, vague billing terms)
+  "suggestions": string[],         // up to 3 things to clarify with the vendor in writing, each one short line
+  "negotiate": [{                  // up to 5 things worth negotiating, most valuable first
+    "type": "Fixed fee"|"Unit rate"|"Slab rule"|"Minimum commitment"|"Billing rule"|"Contract term",
+    "item": string,                // which charge, e.g. "Email platform fee ₹5,000/month"
+    "ask": string,                 // what to ask for, concrete, e.g. "Waive it, or cap it at ₹2,000 once volume crosses 5 lakh emails"
+    "why": string                  // one short line on why it matters to the customer
+  }],               // up to 4 short risks for the customer (auto-renewal, lock-in, minimums, vague billing terms)
   "costItems": [{
     "id": string,                  // short slug, e.g. "sms_txn"
     "name": string,                // e.g. "Transactional SMS"

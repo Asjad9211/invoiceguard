@@ -50,6 +50,7 @@ export interface Agreement {
   costItems: CostItem[];
   risks: string[];
   suggestions?: string[];
+  negotiate?: { type: string; item: string; ask: string; why: string }[];
 }
 
 export interface InvoiceLine {

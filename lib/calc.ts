@@ -1,6 +1,6 @@
 import type { CostItem, Slab, Invoice } from "./types";
 
-/** Cost before tax for a quantity under a cost item's pricing. Deterministic — no AI. */
+/** Cost before tax for a quantity under a cost item's pricing. Deterministic, no AI. */
 export function costFor(item: CostItem, qty: number): number {
   const free = item.freeUnits ?? 0;
   const q = Math.max(0, qty - free);
@@ -96,7 +96,7 @@ export function checkInvoice(invoice: Invoice, items: CostItem[]): { lines: Line
     const item = items.find((i) => i.id === l.costItemId);
     const flags: string[] = [];
     if (!item) {
-      flags.push("Not in agreement — no matching cost item");
+      flags.push("Not in the agreement");
       return { costItemId: null, description: l.description, invoicedQty: l.quantity, invoicedAmount: l.amount, actualQty: null, expectedAmount: 0, diff: l.amount, flags };
     }
     const actual = item.actualQty ?? null;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Agreement, CostItem, Invoice, Vendor } from "@/lib/types";
 import { checkInvoice, cliffInsight, cliffZones, costFor, fmtN, inr, round } from "@/lib/calc";
 import { gstCheck } from "@/lib/gst";
@@ -86,7 +86,9 @@ export default function Home() {
       }
     } catch {}
   }, []);
+  const loaded = useRef(false);
   useEffect(() => {
+    if (!loaded.current) { loaded.current = true; return; }
     try {
       localStorage.setItem(STORE, JSON.stringify({ vendors }));
     } catch {}

@@ -27,13 +27,13 @@ export default function Examples() {
     <div>
       <div className="mb-5 flex flex-wrap justify-center gap-1.5">
         {EX.map((x, k) => (
-          <button key={x.tab} onClick={() => { setI(k); setHold(true); }} className={`rounded-full px-3 py-1 text-[13px] font-medium transition-colors ${k === i ? "bg-white text-black" : "text-white/55 ring-1 ring-white/10 hover:text-white"}`}>{x.tab}</button>
+          <button key={x.tab} onClick={() => { setI(k); setHold(true); }} className={`rounded-full px-3 py-1 text-[13px] font-medium transition-colors ${k === i ? "bg-[#17140f] text-[#f4efe6]" : "text-[#17140f]/60 ring-1 ring-[#17140f]/15 hover:text-[#17140f]"}`}>{x.tab}</button>
         ))}
       </div>
-      <div key={i} className="fadeup overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-b from-[#161616] to-[#0b0b0b] text-left text-[#f4f2ee] shadow-[0_40px_120px_-40px_rgba(214,185,124,.35)]">
+      <div key={i} className="fadeup overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-b from-[#161616] to-[#0b0b0b] text-left text-[#f4f2ee] shadow-[0_40px_100px_-40px_rgba(23,20,15,.55)]">
         <div className="flex items-center gap-2 border-b border-white/10 px-6 py-3.5 text-sm"><span className="flex gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-white/15" /><span className="h-2.5 w-2.5 rounded-full bg-white/15" /><span className="h-2.5 w-2.5 rounded-full bg-white/15" /></span>
           <span className="font-medium">{e.doc}</span>
-          <span className="ml-auto font-mono text-[10px] tracking-widest text-gold">READ BY INVOICEGUARD</span>
+          <span className="ml-auto font-mono text-[10px] tracking-widest text-[#ff9b7a]">READ BY INVOICEGUARD</span>
         </div>
         <div className="px-6 py-5">
           <div className="text-[11px] uppercase tracking-[0.18em] text-white/45">Charge found</div>
@@ -42,7 +42,7 @@ export default function Examples() {
         </div>
         <div className="border-t border-white/10 px-6 py-5">
           <div className="text-[11px] uppercase tracking-[0.18em] text-white/45">The agreement doesn&apos;t say</div>
-          <div className="mt-2 flex flex-wrap gap-1.5 text-[12px]">{e.unclear.map((q) => <span key={q} className="rounded-full border border-gold/40 px-3 py-1 text-gold">{q}</span>)}</div>
+          <div className="mt-2 flex flex-wrap gap-1.5 text-[12px]">{e.unclear.map((q) => <span key={q} className="rounded-full border border-[#ff8a65]/40 px-3 py-1 text-[#ff9b7a]">{q}</span>)}</div>
         </div>
         <ul className="grid border-t border-white/10 text-sm md:grid-cols-3 md:divide-x md:divide-white/10">
           {e.checks.map(([a, b], n) => (

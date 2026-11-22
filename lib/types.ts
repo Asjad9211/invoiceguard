@@ -89,6 +89,8 @@ export interface Invoice {
   taxLines?: { type: "IGST" | "CGST" | "SGST" | "GST"; ratePct: number; amount: number }[];
 }
 
+export type PointStatus = "open" | "discussed" | "keep" | "ignored" | "resolved";
+
 export interface Vendor {
   id: string;
   agreement: Agreement;
@@ -96,7 +98,9 @@ export interface Vendor {
   status: "setup" | "ready" | "approved" | "disputed";
   history?: { invoiceNo: string; date: string; total: number; status: string; gstin?: string | null }[];
   verdict?: { verdict: string; reasons: string[]; email: { subject: string; body: string } };
-  issueState?: Record<string, "resolved" | "ignored">;
+  issueState?: Record<string, PointStatus>;
+  pointState?: Record<string, PointStatus>;
+  agreementVersions?: { label: string; date: string }[];
   disputes?: { invoiceNo: string; date: string; amount: number; status: "open" | "credit_note" | "corrected" | "rejected" | "paid_anyway"; note?: string }[];
   disputeEmail?: string;
 }

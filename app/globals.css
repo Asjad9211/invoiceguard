@@ -27,7 +27,8 @@
   --font-sans: var(--font-inter), ui-sans-serif, system-ui;
   --font-mono: var(--font-jetbrains), ui-monospace, monospace;
   --font-serif: var(--font-serif), ui-serif, Georgia, serif;
-  --color-gold: #d6b97c;
+  --color-gold: #d9482b;
+  --color-ivory: #f4efe6;
 }
 
 html {
@@ -80,8 +81,8 @@ label {
 .fadeup { animation: fadeup .45s ease both; }
 .app-bg { background: linear-gradient(180deg, #f3f5ff 0%, #f7f8fb 220px); }
 
-.lux { background: #050505; color: #f4f2ee; }
-.lux-card { background: linear-gradient(180deg, #141414 0%, #0c0c0c 100%); border: 1px solid rgba(255,255,255,.08); }
-.lux-line { border-color: rgba(255,255,255,.08); }
-.lux-muted { color: rgba(244,242,238,.58); }
-.spot { background: radial-gradient(50% 60% at 50% 0%, rgba(214,185,124,.16) 0%, transparent 70%); }
+.lux { background: #f4efe6; color: #17140f; }
+.lux-card { background: #fffdf9; border: 1px solid rgba(23,20,15,.09); }
+.lux-line { border-color: rgba(23,20,15,.1); }
+.lux-muted { color: rgba(23,20,15,.6); }
+.spot { background: radial-gradient(45% 55% at 50% 0%, rgba(228,87,46,.12) 0%, transparent 70%); }

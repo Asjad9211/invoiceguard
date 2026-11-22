@@ -58,19 +58,19 @@ const PERMS = ["View", "Add vendors", "Confirm usage", "Approve or dispute"];
 export default function Landing() {
   return (
     <div className="lux min-h-dvh">
-      <header className="sticky top-0 z-30 border-b lux-line bg-black/70 backdrop-blur-xl">
+      <header className="sticky top-0 z-30 border-b lux-line bg-[#f4efe6]/85 backdrop-blur-xl">
         <div className="mx-auto flex h-14 max-w-6xl items-center gap-8 px-5">
-          <Link href="/" aria-label="InvoiceGuard home"><Logo dark /></Link>
+          <Link href="/" aria-label="InvoiceGuard home"><Logo /></Link>
           <nav className="hidden gap-7 text-[13px] lux-muted md:flex">
-            <a href="#how" className="hover:text-white">How it works</a>
-            <a href="#use-cases" className="hover:text-white">Use cases</a>
-            <a href="#gst" className="hover:text-white">GST</a>
-            <a href="#teams" className="hover:text-white">Teams</a>
-            <a href="#pricing" className="hover:text-white">Pricing</a>
+            <a href="#how" className="hover:text-[#17140f]">How it works</a>
+            <a href="#use-cases" className="hover:text-[#17140f]">Use cases</a>
+            <a href="#gst" className="hover:text-[#17140f]">GST</a>
+            <a href="#teams" className="hover:text-[#17140f]">Teams</a>
+            <a href="#pricing" className="hover:text-[#17140f]">Pricing</a>
           </nav>
           <div className="ml-auto flex items-center gap-3">
-            <Link href="/app" className="hidden text-[13px] lux-muted hover:text-white sm:block">Log in</Link>
-            <Link href="/signup" className="rounded-full bg-white px-4 py-1.5 text-[13px] font-medium text-black hover:bg-white/90">Get started</Link>
+            <Link href="/app" className="hidden text-[13px] lux-muted hover:text-[#17140f] sm:block">Log in</Link>
+            <Link href="/signup" className="rounded-full bg-[#17140f] px-4 py-1.5 text-[13px] font-medium text-[#f4efe6] hover:bg-gold">Get started</Link>
           </div>
         </div>
       </header>
@@ -86,8 +86,8 @@ export default function Landing() {
             Upload the agreement once. Upload each invoice. See what you should have been charged, where the bill is off, and whether the GST is right.
           </p>
           <div className="mt-9 flex flex-wrap justify-center gap-3">
-            <Link href="/signup" className="rounded-full bg-white px-6 py-3 text-[15px] font-medium text-black hover:bg-white/90">Start free</Link>
-            <Link href="/app" className="rounded-full border border-white/20 px-6 py-3 text-[15px] font-medium text-white hover:border-white/50">Upload an agreement <span aria-hidden>→</span></Link>
+            <Link href="/signup" className="rounded-full bg-[#17140f] px-6 py-3 text-[15px] font-medium text-[#f4efe6] hover:bg-gold">Start free</Link>
+            <Link href="/app" className="rounded-full border border-[#17140f]/25 px-6 py-3 text-[15px] font-medium hover:border-[#17140f]">Upload an agreement <span aria-hidden>→</span></Link>
           </div>
           <p className="mt-5 text-[13px] lux-muted">Free for your first 3 vendors. No card needed.</p>
         </div>
@@ -121,8 +121,8 @@ export default function Landing() {
               <div key={s.n} className="lux-card lift rounded-3xl p-8">
                 <div className="flex items-center gap-3">
                   <span className="font-mono text-[12px] text-gold">{s.n}</span>
-                  <span className="h-px flex-1 bg-white/10" />
-                  <Icon d={s.icon} className="h-5 w-5 text-white/60" />
+                  <span className="h-px flex-1 bg-[#17140f]/10" />
+                  <Icon d={s.icon} className="h-5 w-5 text-[#17140f]/50" />
                 </div>
                 <div className="mt-6 font-serif text-[30px] leading-tight">{s.t}</div>
                 <p className="mt-3 text-[15px] leading-relaxed lux-muted">{s.d}</p>
@@ -180,7 +180,7 @@ export default function Landing() {
                 {ROLES.map((r) => (
                   <tr key={r.r} className="border-b lux-line last:border-0">
                     <td className="px-6 py-4"><div className="font-medium">{r.r}</div><div className="text-[12px] lux-muted">{r.d}</div></td>
-                    {r.p.map((v, i) => <td key={i} className="px-4 py-4 text-center">{v ? <span className="text-gold">●</span> : <span className="text-white/15">○</span>}</td>)}
+                    {r.p.map((v, i) => <td key={i} className="px-4 py-4 text-center">{v ? <span className="text-gold">●</span> : <span className="text-[#17140f]/15">○</span>}</td>)}
                   </tr>
                 ))}
               </tbody>
@@ -199,13 +199,13 @@ export default function Landing() {
               { n: "Team", p: "₹1,499", s: "a month", f: ["First month free", "Up to 15 vendors", "5 users included", "₹99 per extra user a month", "₹149 per extra vendor a month", "Usage file import"], cta: "Try a month free", hi: true },
               { n: "Business", p: "Let's talk", s: "", f: ["Unlimited vendors and users", "Usage from vendor APIs", "Tally, Zoho or SAP export", "Single sign-on"], cta: "Contact us" },
             ].map((t) => (
-              <div key={t.n} className={`flex flex-col rounded-3xl p-8 ${t.hi ? "bg-[#f4f2ee] text-black" : "lux-card"}`}>
-                <div className={`text-[13px] font-medium ${t.hi ? "text-black/60" : "lux-muted"}`}>{t.n}</div>
-                <div className="mt-3 flex items-baseline gap-2"><span className="font-serif text-[52px] leading-none">{t.p}</span><span className={t.hi ? "text-black/50" : "lux-muted"}>{t.s}</span></div>
-                <ul className={`mt-6 flex-1 space-y-2.5 text-[14px] ${t.hi ? "text-black/70" : "lux-muted"}`}>
-                  {t.f.map((f) => <li key={f} className="flex gap-2.5"><span className={`mt-2 h-1 w-1 shrink-0 rounded-full ${t.hi ? "bg-black" : "bg-gold"}`} />{f}</li>)}
+              <div key={t.n} className={`flex flex-col rounded-3xl p-8 ${t.hi ? "bg-[#17140f] text-[#f4efe6]" : "lux-card"}`}>
+                <div className={`text-[13px] font-medium ${t.hi ? "text-[#f4efe6]/60" : "lux-muted"}`}>{t.n}</div>
+                <div className="mt-3 flex items-baseline gap-2"><span className="font-serif text-[52px] leading-none">{t.p}</span><span className={t.hi ? "text-[#f4efe6]/50" : "lux-muted"}>{t.s}</span></div>
+                <ul className={`mt-6 flex-1 space-y-2.5 text-[14px] ${t.hi ? "text-[#f4efe6]/75" : "lux-muted"}`}>
+                  {t.f.map((f) => <li key={f} className="flex gap-2.5"><span className={`mt-2 h-1 w-1 shrink-0 rounded-full ${t.hi ? "bg-gold" : "bg-gold"}`} />{f}</li>)}
                 </ul>
-                <Link href="/signup" className={`mt-8 rounded-full px-5 py-3 text-center text-[14px] font-medium ${t.hi ? "bg-black text-white" : "border border-white/20 hover:border-white/50"}`}>{t.cta}</Link>
+                <Link href="/signup" className={`mt-8 rounded-full px-5 py-3 text-center text-[14px] font-medium ${t.hi ? "bg-gold text-white" : "border border-[#17140f]/20 hover:border-[#17140f]/60"}`}>{t.cta}</Link>
               </div>
             ))}
           </div>
@@ -218,8 +218,8 @@ export default function Landing() {
           <div className="font-serif text-[44px] leading-[1.02] md:text-[72px]">Try it on <em className="text-gold">one</em> agreement.</div>
           <p className="mt-4 lux-muted">Your documents are only used for your account.</p>
           <div className="mt-8 flex justify-center gap-3">
-            <Link href="/signup" className="rounded-full bg-white px-6 py-3 font-medium text-black">Start free</Link>
-            <Link href="/app" className="rounded-full border border-white/20 px-6 py-3 font-medium hover:border-white/50">Upload an agreement</Link>
+            <Link href="/signup" className="rounded-full bg-[#17140f] px-6 py-3 font-medium text-[#f4efe6]">Start free</Link>
+            <Link href="/app" className="rounded-full border border-[#17140f]/25 px-6 py-3 font-medium hover:border-[#17140f]">Upload an agreement</Link>
           </div>
         </div>
       </section>

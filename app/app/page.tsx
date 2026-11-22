@@ -1,7 +1,7 @@
 "use client";
 
 import { Component, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import type { Agreement, CostItem, Invoice, Vendor } from "@/lib/types";
+import type { Agreement, CostItem, Invoice, Vendor, PointStatus } from "@/lib/types";
 import { checkInvoice, cliffInsight, cliffZones, costFor, fmtN, inr, round, slabIssue } from "@/lib/calc";
 import { gstCheck } from "@/lib/gst";
 import { parseCSV, applyRule, validateRule, distinctValues, type UsageRule } from "@/lib/usage";
@@ -149,6 +149,26 @@ export default function Home() {
     })) } }));
   }
 
+  async function replaceAgreement(doc: Doc) {
+    if (!v) return;
+    setErr(null);
+    setBusy("Reading the final agreement and carrying over your settings…");
+    try {
+      const a = await post<Agreement>("/api/agreement", { ...doc, checklist });
+      const norm = (x: string) => x.toLowerCase().replace(/[^a-z0-9]/g, "");
+      a.costItems = (a.costItems || []).map((c) => {
+        const old = v.agreement.costItems.find((o) => norm(o.name) === norm(c.name) || o.id === c.id);
+        return { ...c, questions: c.questions || [], sourceOfTruth: old?.sourceOfTruth || "manual", owner: old?.owner, sourceNote: old?.sourceNote, sourceSystem: old?.sourceSystem, usedIn: old?.usedIn, history: old?.history, utilization: old?.utilization, utilNote: old?.utilNote };
+      });
+      const today = new Date().toLocaleDateString("en-IN");
+      update((x) => ({ ...x, agreement: a, pointState: {}, agreementVersions: [...(x.agreementVersions || [{ label: "First upload", date: "" }]), { label: "Final agreed version", date: today }] }));
+    } catch (e) {
+      setErr(String(e));
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function addInvoice(doc: Doc) {
     if (!v) return;
     setErr(null);
@@ -213,7 +233,7 @@ export default function Home() {
   const notStated = items.flatMap((c) => c.questions.filter((q) => q.answer && /not stated/i.test(q.answer)).map((q) => ({ item: c.name, q: q.text })));
 
   return (
-    <div className="flex h-dvh flex-col bg-[#f6f5f2] text-[14px] text-ink">
+    <div className="flex h-dvh flex-col bg-[#f4efe6] text-[14px] text-ink">
       {/* top bar */}
       <header className="flex h-14 shrink-0 items-center gap-3 border-b border-line bg-white px-4">
         <Link href="/" aria-label="Home"><Logo /></Link>
@@ -250,7 +270,7 @@ export default function Home() {
 
       <div className="flex min-h-0 flex-1 flex-col md:flex-row">
         {/* vendor rail */}
-        <aside className="flex shrink-0 flex-col gap-1 bg-[#050505] p-3 text-white md:w-64">
+        <aside className="flex shrink-0 flex-col gap-1 bg-[#17140f] p-3 text-white md:w-64">
           <label className="flex cursor-pointer items-center justify-center gap-2 rounded-full bg-white px-3 py-2.5 font-medium text-black hover:bg-white/90">
             <span className="text-lg leading-none">+</span> Add vendor
             <input type="file" accept=".pdf,.docx,.txt,.png,.jpg,.jpeg,.webp" className="hidden" onChange={async (e) => { const f = e.target.files?.[0]; e.target.value = ""; if (!f) return; try { setStage(f.name); addAgreement(await fileToDoc(f)); } catch (x) { setErr(String(x)); } }} />
@@ -292,6 +312,12 @@ export default function Home() {
               <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b border-zinc-200 bg-white px-3 py-1.5">
                 <div className="flex items-center gap-2"><span className="grid h-8 w-8 place-items-center rounded-lg bg-black font-serif text-sm font-bold text-white">{v.agreement.vendor.slice(0, 1)}</span><span className="font-serif text-[24px] leading-none">{v.agreement.vendor}</span></div>
                 <div className="text-zinc-500">{v.agreement.service} · {v.agreement.period}</div>
+                <div className="flex items-center gap-2 text-[12px]">
+                  <span className="rounded-full bg-paper px-2 py-0.5 text-slate">{(v.agreementVersions || []).length > 1 ? `Using: ${v.agreementVersions![v.agreementVersions!.length - 1].label} (${v.agreementVersions![v.agreementVersions!.length - 1].date})` : "Using: first upload"}</span>
+                  <label className="cursor-pointer font-medium text-cobalt hover:underline">Upload final agreed agreement
+                    <input type="file" accept=".pdf,.docx,.txt,.png,.jpg,.jpeg,.webp" className="hidden" onChange={async (e) => { const f = e.target.files?.[0]; e.target.value = ""; if (!f) return; try { setStage(f.name); replaceAgreement(await fileToDoc(f)); } catch (x) { setErr(String(x)); } }} />
+                  </label>
+                </div>
                 <div className="ml-auto flex overflow-hidden rounded-lg border border-line bg-white p-0.5">
                   {([
                     [1, `Understand${openQs ? ` · ${openQs} to answer` : " ✓"}`],
@@ -379,6 +405,7 @@ export default function Home() {
                     <Liabilities list={v.agreement.liabilities} />
                     <Checklist result={v.agreement.checklist} list={checklist} save={saveChecklist} />
                     <Negotiate list={v.agreement.negotiate} />
+                    <AgreementEmail a={v.agreement} state={v.pointState || {}} company={org.name} setState={(k, val) => update((x) => ({ ...x, pointState: { ...(x.pointState || {}), [k]: val } }))} />
                     {showCompare ? <Compare items={items} onQuote={(id, rate) => updateItem(id, { quoteRate: rate })} /> : (
                       <button onClick={() => setShowCompare(true)} className="rounded-lg border border-line bg-white px-3 py-2 font-medium hover:border-cobalt hover:text-cobalt">Compare with another vendor's quote</button>
                     )}
@@ -560,7 +587,7 @@ export default function Home() {
                         <Issues
                           issues={buildIssues(check.lines, gst?.findings || [], dupInvoice)}
                           state={v.issueState || {}}
-                          setState={(k, val) => update((x) => { const st = { ...(x.issueState || {}) }; if (val) st[k] = val; else delete st[k]; return { ...x, issueState: st }; })}
+                          setState={(k, val) => update((x) => ({ ...x, issueState: { ...(x.issueState || {}), [k]: val } }))}
                           vendor={v.agreement.vendor}
                           invoice={v.invoice}
                           company={org.name}
@@ -938,10 +965,33 @@ function buildIssues(lines: ReturnType<typeof checkInvoice>["lines"], gst: { lev
   return out;
 }
 
-function Issues({ issues, state, setState, vendor, invoice, company, past }: { issues: Issue[]; state: Record<string, "resolved" | "ignored">; setState: (k: string, v: "resolved" | "ignored" | null) => void; vendor: string; invoice: Invoice; company: string; past: NonNullable<Vendor["disputes"]> }) {
+const STATES: [PointStatus, string][] = [["open", "Open"], ["discussed", "Discussed"], ["keep", "Keep as it is"], ["ignored", "Ignore"], ["resolved", "Resolved"]];
+const STATE_STYLE: Record<PointStatus, string> = { open: "border-line bg-white", discussed: "border-cobalt/40 bg-cobalt-50 text-cobalt", keep: "border-line bg-paper text-slate", ignored: "border-line bg-paper text-slate", resolved: "border-ok/40 bg-ok-50 text-ok" };
+function StateSelect({ value, onChange }: { value: PointStatus; onChange: (v: PointStatus) => void }) {
+  return (
+    <select value={value} onChange={(e) => onChange(e.target.value as PointStatus)} className={`h-fit rounded-full border px-2.5 py-1 text-[12px] font-medium ${STATE_STYLE[value]}`}>
+      {STATES.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+    </select>
+  );
+}
+
+function EmailBox({ to, subject, body }: { to: string; subject: string; body: string }) {
   const [copied, setCopied] = useState(false);
+  return (
+    <div className="rounded-xl border border-line bg-white p-3">
+      <div className="mb-1 flex items-center gap-2 font-semibold">Email to {to}
+        <button onClick={() => { navigator.clipboard?.writeText(`Subject: ${subject}\n\n${body}`); setCopied(true); setTimeout(() => setCopied(false), 1500); }} className="ml-auto rounded-full border border-line px-3 py-1 text-[12px] font-normal">{copied ? "Copied" : "Copy"}</button>
+        <a href={`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`} className="rounded-full bg-ink px-3 py-1 text-[12px] font-medium text-white">Open in email</a>
+      </div>
+      <div className="text-[13px] font-medium">Subject: {subject}</div>
+      <pre className="mt-1 max-h-80 overflow-auto whitespace-pre-wrap font-sans text-[13px] text-ink-2">{body}</pre>
+    </div>
+  );
+}
+
+function Issues({ issues, state, setState, vendor, invoice, company, past }: { issues: Issue[]; state: Record<string, PointStatus>; setState: (k: string, v: PointStatus) => void; vendor: string; invoice: Invoice; company: string; past: NonNullable<Vendor["disputes"]> }) {
   if (!issues.length) return null;
-  const open = issues.filter((i) => !state[i.key]);
+  const open = issues.filter((i) => (state[i.key] || "open") === "open");
   const total = open.reduce((s, i) => s + Math.max(0, i.amount || 0), 0);
   const subject = `Invoice ${invoice.invoiceNo}${invoice.date ? " dated " + invoice.date : ""}: ${open.length} point${open.length === 1 ? "" : "s"} to clarify`;
   const body = `Dear ${vendor} team,
@@ -955,37 +1005,62 @@ Accounts Payable
 ${company}`;
   return (
     <div className="grid gap-3 lg:grid-cols-2">
-      <div className="rounded-lg border border-line bg-white">
+      <div className="rounded-xl border border-line bg-white">
         <div className="flex items-center border-b border-line px-3 py-2"><span className="font-semibold">Issues found</span><span className="ml-2 rounded-full bg-paper px-2 text-[12px] text-slate">{open.length} open of {issues.length}</span></div>
         <ul className="divide-y divide-line">
           {issues.map((i) => {
-            const st = state[i.key];
+            const st = state[i.key] || "open";
             return (
-              <li key={i.key} className={`flex gap-2 px-3 py-2 ${st ? "opacity-50" : ""}`}>
-                <div className="min-w-0 flex-1"><div className={`font-medium ${st ? "line-through" : ""}`}>{i.title}</div><div className="text-[12px] text-slate">{i.detail}</div></div>
-                {st ? (
-                  <button onClick={() => setState(i.key, null)} className="h-fit whitespace-nowrap rounded-md border border-line px-2 py-1 text-[12px]">{st === "resolved" ? "Resolved" : "Ignored"} · Undo</button>
-                ) : (
-                  <div className="flex h-fit gap-1">
-                    <button onClick={() => setState(i.key, "resolved")} className="whitespace-nowrap rounded-md border border-line px-2 py-1 text-[12px] hover:border-ok hover:text-ok">Resolved</button>
-                    <button onClick={() => setState(i.key, "ignored")} className="whitespace-nowrap rounded-md border border-line px-2 py-1 text-[12px] hover:border-ink/40">Ignore</button>
-                  </div>
-                )}
+              <li key={i.key} className={`flex gap-2 px-3 py-2 ${st === "ignored" || st === "resolved" ? "opacity-55" : ""}`}>
+                <div className="min-w-0 flex-1"><div className="font-medium">{i.title}</div><div className="text-[12px] text-slate">{i.detail}</div></div>
+                <StateSelect value={st} onChange={(val) => setState(i.key, val)} />
               </li>
             );
           })}
         </ul>
       </div>
-      {open.length > 0 && (
-        <div className="rounded-lg border border-line bg-white p-3">
-          <div className="mb-1 flex items-center gap-2 font-semibold">Email to {vendor}
-            <button onClick={() => { navigator.clipboard?.writeText(`Subject: ${subject}\n\n${body}`); setCopied(true); setTimeout(() => setCopied(false), 1500); }} className="ml-auto rounded-md border border-line px-2 py-1 text-[12px] font-normal">{copied ? "Copied" : "Copy"}</button>
-            <a href={`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`} className="rounded-md bg-ink px-2 py-1 text-[12px] font-medium text-white">Open in email</a>
-          </div>
-          <div className="text-[13px] font-medium">Subject: {subject}</div>
-          <pre className="mt-1 max-h-72 overflow-auto whitespace-pre-wrap font-sans text-[13px] text-ink-2">{body}</pre>
-        </div>
-      )}
+      {open.length > 0 ? <EmailBox to={vendor} subject={subject} body={body} /> : <div className="rounded-xl border border-line bg-white p-3 text-slate">No open issues left. Only issues marked Open go into the email.</div>}
+    </div>
+  );
+}
+
+function AgreementEmail({ a, state, setState, company }: { a: Agreement; state: Record<string, PointStatus>; setState: (k: string, v: PointStatus) => void; company: string }) {
+  const points: { key: string; kind: "Clarify" | "Change"; text: string }[] = [];
+  for (const c of a.costItems) for (const q of c.questions) if (!q.answer || /not stated/i.test(q.answer)) points.push({ key: "q:" + c.id + q.id, kind: "Clarify", text: `${c.name}: ${q.text}` });
+  for (const x of a.suggestions || []) points.push({ key: "s:" + x.slice(0, 40), kind: "Clarify", text: x });
+  for (const x of a.checklist || []) if (x.status !== "found") points.push({ key: "c:" + x.item, kind: "Clarify", text: `${x.item}: ${x.detail}` });
+  for (const n of a.negotiate || []) points.push({ key: "n:" + n.item, kind: "Change", text: `${n.item}: ${n.ask}` });
+  if (!points.length) return null;
+  const open = points.filter((p) => (state[p.key] || "open") === "open");
+  const cl = open.filter((p) => p.kind === "Clarify");
+  const ch = open.filter((p) => p.kind === "Change");
+  const subject = `${a.vendor} agreement: points to clarify${ch.length ? " and proposed changes" : ""}`;
+  const body = `Dear ${a.vendor} team,
+
+We have gone through the agreement for ${a.service}. Before we proceed, we would like to close a few points.
+${cl.length ? `\nPlease clarify in writing:\n${cl.map((p, i) => `${i + 1}. ${p.text}`).join("\n")}\n` : ""}${ch.length ? `\nWe would like to propose these changes:\n${ch.map((p, i) => `${i + 1}. ${p.text}`).join("\n")}\n` : ""}
+Please share your response, and a revised draft where needed, so we can finalise.
+
+Regards,
+${company}`;
+  return (
+    <div className="grid gap-3 lg:grid-cols-2">
+      <div className="rounded-xl border border-line bg-white">
+        <div className="flex items-center border-b border-line px-3 py-2"><span className="font-semibold">Points to raise with the vendor</span><span className="ml-2 rounded-full bg-paper px-2 text-[12px] text-slate">{open.length} open of {points.length}</span></div>
+        <ul className="max-h-[480px] divide-y divide-line overflow-auto">
+          {points.map((p) => {
+            const st = state[p.key] || "open";
+            return (
+              <li key={p.key} className={`flex gap-2 px-3 py-2 ${st === "ignored" || st === "resolved" || st === "keep" ? "opacity-55" : ""}`}>
+                <span className={`h-fit rounded-full px-2 py-0.5 text-[11px] font-medium ${p.kind === "Change" ? "bg-sun-50 text-amber" : "bg-cobalt-50 text-cobalt"}`}>{p.kind}</span>
+                <div className="min-w-0 flex-1 text-[13px]">{p.text}</div>
+                <StateSelect value={st} onChange={(val) => setState(p.key, val)} />
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+      {open.length ? <EmailBox to={a.vendor} subject={subject} body={body} /> : <div className="rounded-xl border border-line bg-white p-3 text-slate">All points are handled. Once the vendor sends the final version, use "Upload final agreed agreement" at the top. Invoices will be checked against it.</div>}
     </div>
   );
 }

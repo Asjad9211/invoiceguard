@@ -1,4 +1,4 @@
-import { askJSON } from "@/lib/claude";
+import { askJSON, FAST_MODEL } from "@/lib/claude";
 
 export const maxDuration = 300;
 
@@ -14,7 +14,9 @@ Return JSON:
 { "verdict": "Pay"|"Hold"|"Dispute",
   "reasons": string[],   // max 4, each one line with ₹ amount and the clause/evidence
   "email": { "subject": string, "body": string } }  // dispute email to the vendor asking for a corrected invoice or credit note, citing clauses and evidence; sign off as "Accounts Payable"
-Verdict: Pay if no money at risk; Dispute if overbilled; Hold if data missing.`
+Verdict: Pay if no money at risk; Dispute if overbilled; Hold if data missing. Lines with status "unmatched" are not proven overbilling: ask the vendor to show the approval for them. Lines with status "pending" need usage confirmation.`,
+      undefined,
+      FAST_MODEL
     );
     return Response.json(data);
   } catch (e) {

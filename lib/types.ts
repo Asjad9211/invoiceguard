@@ -38,6 +38,12 @@ export interface CostItem {
   includes?: string[]; // APIs/steps bundled into this charge
   recurring?: "monthly" | "one_time" | "on_request";
   quoteRate?: number;
+  sourceSystem?: string; // e.g. "Signzy dashboard export", "our onboarding DB"
+  usedIn?: string; // where this API/service is used, e.g. "Investor onboarding app"
+  utilization?: "full" | "partial" | "unused";
+  utilNote?: string;
+  usageRule?: string; // how usage was counted from an uploaded file
+  history?: { month: string; qty?: number; utilization?: string; note?: string }[];
   // set by user
   owner?: string;
   sourceOfTruth?: "manual" | "api";
@@ -54,6 +60,8 @@ export interface Agreement {
   risks: string[];
   suggestions?: string[];
   negotiate?: { type: string; item: string; ask: string; why: string }[];
+  keyTerms?: { kind: "payment" | "dispute" | "penalty" | "free_period" | "renewal" | "billing_start" | "other"; label: string; detail: string; days?: number | null }[];
+  invoiceDay?: number | null; // day of month the invoice is expected
 }
 
 export interface InvoiceLine {
@@ -83,5 +91,7 @@ export interface Vendor {
   agreement: Agreement;
   invoice?: Invoice;
   status: "setup" | "ready" | "approved" | "disputed";
+  history?: { invoiceNo: string; date: string; total: number; status: string }[];
+  verdict?: { verdict: string; reasons: string[]; email: { subject: string; body: string } };
   disputeEmail?: string;
 }

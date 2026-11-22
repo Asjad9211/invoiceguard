@@ -61,7 +61,7 @@ export default function Signup() {
           <fieldset>
             <legend className="text-sm font-medium">Plan</legend>
             <div className="mt-1 grid grid-cols-3 gap-2">
-              {[["Free", "3 vendors"], ["Team", "$19, 1 month free"], ["Business", "Talk to us"]].map(([p, price]) => (
+              {[["Free", "3 vendors"], ["Team", "₹1,499, 1st month free"], ["Business", "Talk to us"]].map(([p, price]) => (
                 <button type="button" key={p} onClick={() => setF({ ...f, plan: p })} className={`rounded-md border px-2 py-2 text-left text-sm ${f.plan === p ? "border-cobalt bg-cobalt-50" : "border-line"}`}>
                   <div className="font-medium">{p}</div><div className="text-[12px] text-slate">{price}</div>
                 </button>

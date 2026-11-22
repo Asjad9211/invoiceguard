@@ -19,8 +19,8 @@ function Icon({ d, className = "h-5 w-5" }: { d: string; className?: string }) {
 
 const STEPS = [
   { n: "01", t: "Read the agreement", d: "Upload a vendor agreement, order form or rate card. We list every charge in it: the rate, the slabs, minimums, free units and the clause it comes from. If something is vague, like whether SMS is billed when sent or when delivered, we ask you.", icon: I.doc },
-  { n: "02", t: "Decide who checks what", d: "For each charge, pick one person from your team and the report they trust, such as the vendor dashboard or your own logs. That person confirms the real usage each month.", icon: I.user },
-  { n: "03", t: "Check the invoice", d: "Upload the invoice. We work out what you should pay from the agreement and the confirmed usage, line by line, and check the GST. You approve it, or send a dispute email we draft for you.", icon: I.receipt },
+  { n: "02", t: "Decide who checks what", d: "For each charge, pick one person and the data they trust: a report, a usage file or an API log. Upload a usage export and Claude works out which rows are billable. For licences, note whether they're fully used, so patterns show up over time.", icon: I.user },
+  { n: "03", t: "Check the invoice", d: "Upload the invoice. We work out what you should pay from the agreement and the confirmed usage, check the GST, and show payment and dispute deadlines. You approve it, or send a dispute email we draft. We remind you when an invoice is late.", icon: I.receipt },
   { n: "04", t: "Know what to negotiate", d: "We point out what is worth asking the vendor to change: fixed fees, slab rules, minimum commitments, how failed calls are billed and rate locks.", icon: I.tag },
 ];
 
@@ -59,12 +59,10 @@ export default function Landing() {
         </div>
       </header>
 
-      <section className="grid-bg border-b border-line">
+      <section className="border-b border-line bg-gradient-to-b from-cobalt-50/70 to-white">
         <div className="mx-auto grid max-w-6xl gap-10 px-4 py-14 md:grid-cols-12 md:py-20">
           <div className="md:col-span-6">
-            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-line bg-white px-3 py-1 font-mono text-[11px] uppercase tracking-wider text-slate">
-              <span className="h-1.5 w-1.5 rounded-full bg-cobalt" /> For finance and ops teams in India
-            </div>
+            <div className="mb-4 text-sm font-medium text-cobalt">For finance and operations teams in India</div>
             <h1 className="font-display text-[40px] font-semibold leading-[1.03] tracking-tight md:text-[58px]">
               Check every vendor bill<br /><span className="text-cobalt">before you pay it.</span>
             </h1>
@@ -222,8 +220,8 @@ export default function Landing() {
           <p className="mt-3 max-w-2xl text-[15px] text-slate">Most people on your team will log in once or twice a month, so extra users are cheap. Paid plans start with a free month.</p>
           <div className="mt-10 grid gap-4 md:grid-cols-3">
             {[
-              { n: "Free", p: "$0", s: "forever", f: ["Up to 3 vendors", "Up to 3 users", "Unlimited invoices", "GST checks"], cta: "Start free" },
-              { n: "Team", p: "$19", s: "/month", f: ["First month free", "Up to 15 vendors", "5 users included", "$2 per extra user a month", "$3 per extra vendor a month"], cta: "Try a month free", hi: true },
+              { n: "Free", p: "₹0", s: "forever", f: ["Up to 3 vendors", "Up to 3 users", "Unlimited invoices", "GST checks and reminders"], cta: "Start free" },
+              { n: "Team", p: "₹1,499", s: "/month", f: ["First month free", "Up to 15 vendors", "5 users included", "₹99 per extra user a month", "₹149 per extra vendor a month", "Usage file import"], cta: "Try a month free", hi: true },
               { n: "Business", p: "Let's talk", s: "", f: ["Unlimited vendors and users", "Pull usage from vendor APIs", "Tally, Zoho or SAP export", "Single sign-on"], cta: "Contact us" },
             ].map((t) => (
               <div key={t.n} className={`flex flex-col rounded-xl border p-6 ${t.hi ? "border-ink bg-ink text-white" : "border-line bg-white"}`}>
@@ -265,7 +263,7 @@ export default function Landing() {
 function SectionHead({ k, t }: { k: string; t: string }) {
   return (
     <div className="max-w-3xl">
-      <div className="font-mono text-[11px] uppercase tracking-wider text-cobalt">{k}</div>
+      <div className="text-sm font-semibold text-cobalt">{k}</div>
       <h2 className="mt-2 font-display text-3xl font-semibold leading-tight tracking-tight md:text-[40px]">{t}</h2>
     </div>
   );

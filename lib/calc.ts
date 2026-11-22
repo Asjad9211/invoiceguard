@@ -20,11 +20,12 @@ export function costFor(item: CostItem, qty: number): number {
       break;
     }
     case "graduated": {
-      for (const s of slabs) {
-        const lo = Math.max(s.from - 1, 0);
+      // band i covers (previous band's upper bound, this band's upper bound]; works for 0- or 1-indexed slabs
+      slabs.forEach((s, i) => {
+        const lo = i === 0 ? 0 : (slabs[i - 1].to ?? s.from - 1);
         const hi = s.to ?? Infinity;
         if (q > lo) cost += (Math.min(q, hi) - lo) * s.rate;
-      }
+      });
       break;
     }
   }
@@ -80,36 +81,65 @@ export function cliffZones(item: CostItem): { start: number; slabStart: number; 
   return out;
 }
 
+export type LineStatus = "verified" | "discrepancy" | "pending" | "unmatched" | "fixed";
+
 export interface LineCheck {
   costItemId: string | null;
   description: string;
   invoicedQty: number;
   invoicedAmount: number;
   actualQty: number | null;
-  expectedAmount: number | null;
-  diff: number | null; // invoiced - expected
+  expectedAmount: number | null; // null when usage is not confirmed yet
+  diff: number | null; // invoiced - expected (only when we can say)
+  status: LineStatus;
   flags: string[];
 }
 
-export function checkInvoice(invoice: Invoice, items: CostItem[]): { lines: LineCheck[]; expectedSubtotal: number; atRisk: number } {
-  const lines: LineCheck[] = invoice.lines.map((l) => {
+/** One row per cost item (lines for the same item are combined, so slabs, free units and minimums apply once). */
+export function checkInvoice(invoice: Invoice, items: CostItem[]) {
+  const groups = new Map<string, { item: CostItem; qty: number; amount: number; desc: string[] }>();
+  const rows: LineCheck[] = [];
+  for (const l of invoice.lines || []) {
     const item = items.find((i) => i.id === l.costItemId);
-    const flags: string[] = [];
     if (!item) {
-      flags.push("Not in the agreement");
-      return { costItemId: null, description: l.description, invoicedQty: l.quantity, invoicedAmount: l.amount, actualQty: null, expectedAmount: 0, diff: l.amount, flags };
+      rows.push({ costItemId: null, description: l.description, invoicedQty: l.quantity, invoicedAmount: l.amount, actualQty: null, expectedAmount: null, diff: null, status: "unmatched", flags: ["Not found in the agreement. Check if it was approved separately before paying."] });
+      continue;
     }
-    const actual = item.actualQty ?? null;
-    const qtyBasis = actual ?? l.quantity;
-    const expected = costFor(item, qtyBasis);
-    if (actual !== null && l.quantity !== actual) flags.push(`Billed ${fmtN(l.quantity)} units; source of truth shows ${fmtN(actual)}`);
-    const expectedAtBilledQty = costFor(item, l.quantity);
-    if (Math.abs(expectedAtBilledQty - l.amount) > 1) flags.push(`Rate mismatch: at agreed rates ${fmtN(l.quantity)} units = ₹${fmtN(expectedAtBilledQty)}, billed ₹${fmtN(l.amount)}`);
-    return { costItemId: item.id, description: l.description, invoicedQty: l.quantity, invoicedAmount: l.amount, actualQty: actual, expectedAmount: expected, diff: round(l.amount - expected), flags };
-  });
-  const expectedSubtotal = round(lines.reduce((s, l) => s + (l.expectedAmount ?? 0), 0));
-  const atRisk = round(lines.reduce((s, l) => s + Math.max(0, l.diff ?? 0), 0));
-  return { lines, expectedSubtotal, atRisk };
+    const g = groups.get(item.id) || { item, qty: 0, amount: 0, desc: [] };
+    g.qty += l.quantity || 0;
+    g.amount += l.amount || 0;
+    g.desc.push(l.description);
+    groups.set(item.id, g);
+  }
+  for (const { item, qty, amount, desc } of groups.values()) {
+    const flags: string[] = [];
+    const atBilledQty = costFor(item, qty);
+    const rateGap = round(amount - atBilledQty);
+    if (Math.abs(rateGap) > 1) flags.push(`Rate mismatch: at agreed rates ${fmtN(qty)} units = ${inr(atBilledQty)}, billed ${inr(round(amount))}`);
+    const fixed = item.pricing.mode === "fixed" || item.billingEvent === "per_month";
+    const actual = fixed ? null : item.actualQty ?? null;
+    let expected: number | null;
+    let status: LineStatus;
+    if (fixed) {
+      expected = atBilledQty;
+      status = Math.abs(rateGap) > 1 ? "discrepancy" : "fixed";
+    } else if (actual === null) {
+      expected = null;
+      status = Math.abs(rateGap) > 1 ? "discrepancy" : "pending";
+      if (status === "pending") flags.push("Waiting for the owner to confirm usage");
+    } else {
+      expected = costFor(item, actual);
+      if (qty !== actual) flags.push(`Billed ${fmtN(qty)} units, confirmed usage is ${fmtN(actual)}`);
+      status = Math.abs(amount - expected) > 1 ? "discrepancy" : "verified";
+    }
+    const diff = expected !== null ? round(amount - expected) : Math.abs(rateGap) > 1 ? rateGap : null;
+    rows.push({ costItemId: item.id, description: desc.length > 1 ? `${item.name} (${desc.length} lines combined)` : desc[0], invoicedQty: qty, invoicedAmount: round(amount), actualQty: actual, expectedAmount: expected, diff, status, flags });
+  }
+  const atRisk = round(rows.filter((r) => r.status === "discrepancy").reduce((s, r) => s + Math.max(0, r.diff ?? 0), 0));
+  const unmatched = round(rows.filter((r) => r.status === "unmatched").reduce((s, r) => s + r.invoicedAmount, 0));
+  const pending = rows.filter((r) => r.status === "pending").length;
+  const confirmedExpected = round(rows.reduce((s, r) => s + (r.expectedAmount ?? 0), 0));
+  return { lines: rows, atRisk, unmatched, pending, expectedSubtotal: confirmedExpected };
 }
 
 export function fmtN(n: number) {

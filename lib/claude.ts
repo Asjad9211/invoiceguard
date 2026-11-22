@@ -13,7 +13,9 @@ function getClient() {
 export type DocInput = { text?: string; pdfBase64?: string; docxBase64?: string };
 
 /** Ask Claude for JSON. Accepts plain text or a PDF. Retries once on bad JSON. */
-export async function askJSON<T>(system: string, instruction: string, doc?: DocInput): Promise<T> {
+export const FAST_MODEL = process.env.CLAUDE_FAST_MODEL || "claude-haiku-5-5";
+
+export async function askJSON<T>(system: string, instruction: string, doc?: DocInput, model: string = MODEL): Promise<T> {
   if (doc?.docxBase64) {
     const { value } = await mammoth.extractRawText({ buffer: Buffer.from(doc.docxBase64, "base64") });
     doc = { text: value };
@@ -29,7 +31,7 @@ export async function askJSON<T>(system: string, instruction: string, doc?: DocI
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
       const res = await getClient().messages.create({
-        model: MODEL,
+        model,
         max_tokens: 16000,
         system,
         tools: [{ name: "submit", description: "Submit the result as a JSON object in the exact shape requested.", input_schema: { type: "object", additionalProperties: true } }],

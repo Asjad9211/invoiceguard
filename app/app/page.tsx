@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import type { Agreement, CostItem, Invoice, Vendor } from "@/lib/types";
 import { checkInvoice, cliffInsight, cliffZones, costFor, fmtN, inr, round } from "@/lib/calc";
 import { gstCheck } from "@/lib/gst";
+import { parseCSV, applyRule, type UsageRule } from "@/lib/usage";
+import { computeAlerts, monthLabel } from "@/lib/alerts";
 import { DEMO_ORG, loadOrg, saveOrg, ROLE_INFO, type Org, type Role } from "@/lib/org";
 import { Logo } from "@/components/Logo";
 import Link from "next/link";
@@ -61,7 +63,9 @@ export default function Home() {
   const [step, setStep] = useState<Step>(1);
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
-  const [verdict, setVerdict] = useState<{ verdict: string; reasons: string[]; email: { subject: string; body: string } } | null>(null);
+  const setVerdict = (_: null) => {};
+  const [usageNotes, setUsageNotes] = useState<string[]>([]);
+  const [bellOpen, setBellOpen] = useState(false);
   const [org, setOrg] = useState<Org>(DEMO_ORG);
   const [teamOpen, setTeamOpen] = useState(false);
   const [showCompare, setShowCompare] = useState(false);
@@ -111,13 +115,45 @@ export default function Home() {
     }
   }
 
+  async function importUsage(text: string) {
+    if (!v) return;
+    const rows = parseCSV(text);
+    if (rows.length < 2) { setErr("That file has no rows."); return; }
+    const [headers, ...data] = rows;
+    setErr(null);
+    setBusy("Claude is reading your usage file and working out how to count each charge…");
+    try {
+      const res = await post<{ rules: UsageRule[]; notes: string[] }>("/api/usage", {
+        headers, sample: data.slice(0, 25), rowCount: data.length,
+        costItems: v.agreement.costItems.filter((c) => c.pricing.mode !== "fixed").map((c) => ({ id: c.id, name: c.name, unit: c.unit, billingEvent: c.billingEvent, includes: c.includes, answers: c.questions.filter((q) => q.answer).map((q) => `${q.text} ${q.answer}`) })),
+      });
+      update((x) => ({ ...x, agreement: { ...x.agreement, costItems: x.agreement.costItems.map((c) => {
+        const r = res.rules.find((r) => r.costItemId === c.id);
+        return r ? { ...c, actualQty: applyRule(headers, data, r), usageRule: r.explanation, sourceNote: c.sourceNote || "Uploaded usage file" } : c;
+      }) } }));
+      setUsageNotes([`${fmtN(data.length)} rows read.`, ...(res.notes || [])]);
+    } catch (e) {
+      setErr(String(e));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  function saveMonth() {
+    const m = monthLabel(new Date(Date.now()));
+    update((x) => ({ ...x, agreement: { ...x.agreement, costItems: x.agreement.costItems.map((c) => ({
+      ...c,
+      history: [...(c.history || []).filter((h) => h.month !== m), { month: m, qty: c.pricing.mode === "fixed" ? undefined : c.actualQty, utilization: c.utilization, note: c.utilNote }],
+    })) } }));
+  }
+
   async function addInvoice(doc: { text?: string; pdfBase64?: string }) {
     if (!v) return;
     setErr(null);
     setBusy("Reading invoice and matching lines to the agreement…");
     try {
       const inv = await post<Invoice>("/api/invoice", { ...doc, costItems: v.agreement.costItems.map(({ id, name, unit }) => ({ id, name, unit })) });
-      update((x) => ({ ...x, invoice: inv, status: "ready" }));
+      update((x) => ({ ...x, invoice: inv, status: "ready", verdict: undefined, history: x.invoice ? [...(x.history || []), { invoiceNo: x.invoice.invoiceNo, date: x.invoice.date, total: x.invoice.total, status: x.status }] : x.history }));
       setVerdict(null);
     } catch (e) {
       setErr(String(e));
@@ -127,14 +163,21 @@ export default function Home() {
   }
 
   const check = useMemo(() => (v?.invoice ? checkInvoice(v.invoice, v.agreement.costItems) : null), [v]);
-  const missingUsage = check ? check.lines.filter((l) => l.costItemId && l.actualQty === null).length : 0;
-  const gst = useMemo(() => (v?.invoice && check ? gstCheck(v.invoice, org.gstin, check.expectedSubtotal) : null), [v, check, org.gstin]);
+  const missingUsage = check ? check.pending : 0;
+  const [alerts, setAlerts] = useState<ReturnType<typeof computeAlerts>>([]);
+  const [month, setMonth] = useState("");
+  useEffect(() => {
+    setAlerts(computeAlerts(vendors));
+    setMonth(monthLabel());
+  }, [vendors]);
+  const dupInvoice = !!(v?.invoice && (v.history || []).some((h) => h.invoiceNo && h.invoiceNo === v.invoice!.invoiceNo));
+  const gst = useMemo(() => (v?.invoice && check ? gstCheck(v.invoice, org.gstin, check.atRisk) : null), [v, check, org.gstin]);
 
   async function runDispute() {
     if (!v || !check) return;
     setBusy("Drafting the dispute with evidence…");
     try {
-      const res = await post<typeof verdict>("/api/explain", {
+      const res = await post<Vendor["verdict"]>("/api/explain", {
         vendor: v.agreement.vendor,
         invoice: { no: v.invoice?.invoiceNo, date: v.invoice?.date },
         atRisk: check.atRisk,
@@ -143,8 +186,7 @@ export default function Home() {
         gstChargedOnOverbilling: gst?.taxAtRisk,
         clauses: v.agreement.costItems.map((c) => ({ id: c.id, name: c.name, clause: c.clause, billingEvent: c.billingEvent, answers: c.questions.map((q) => `${q.text} → ${q.answer ?? "unanswered"}`) })),
       });
-      setVerdict(res);
-      update((x) => ({ ...x, status: "disputed" }));
+      update((x) => ({ ...x, status: "disputed", verdict: res || undefined }));
     } catch (e) {
       setErr(String(e));
     } finally {
@@ -166,6 +208,24 @@ export default function Home() {
         
         <div className="ml-auto flex items-center gap-2">
           
+          <div className="relative">
+            <button onClick={() => setBellOpen((b) => !b)} className="relative rounded-md border border-line p-1.5 hover:bg-paper" aria-label="Reminders">
+              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8M10 20a2 2 0 0 0 4 0" /></svg>
+              {alerts.filter((a) => a.level !== "info").length > 0 && <span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-risk px-1 text-[10px] font-semibold text-white">{alerts.filter((a) => a.level !== "info").length}</span>}
+            </button>
+            {bellOpen && (
+              <div className="absolute right-0 z-40 mt-1 w-80 rounded-lg border border-line bg-white p-2 shadow-xl">
+                <div className="px-1 pb-1 font-semibold">Reminders</div>
+                {alerts.length === 0 ? <div className="px-1 py-2 text-slate">Nothing due. We'll remind you when an invoice is late, a payment is due or a dispute window is closing.</div> : alerts.map((a, i) => (
+                  <button key={i} onClick={() => { setActiveId(a.vendorId); setBellOpen(false); }} className="flex w-full gap-2 rounded-md px-1 py-1.5 text-left hover:bg-paper">
+                    <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${a.level === "risk" ? "bg-risk" : a.level === "warn" ? "bg-amber" : "bg-cobalt"}`} />
+                    <span className="text-[13px]">{a.text}</span>
+                  </button>
+                ))}
+                <div className="mt-1 border-t border-line px-1 pt-1.5 text-[11px] text-slate">Email and WhatsApp reminders are coming soon.</div>
+              </div>
+            )}
+          </div>
           <button onClick={() => setTeamOpen(true)} className="flex items-center gap-1.5 rounded-md border border-line px-2 py-1 hover:bg-paper">
             <span className="grid h-5 w-5 place-items-center rounded-full bg-ink text-[10px] font-semibold text-white">{org.name.slice(0, 1)}</span>
             <span className="max-w-[140px] truncate font-medium">{org.name}</span>
@@ -316,135 +376,190 @@ export default function Home() {
                 )}
 
                 {step === 2 && (
-                  <div className="space-y-2 p-3">
+                  <div className="space-y-3 p-4">
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-zinc-700">For every cost, name one owner and the data you trust. Each month they confirm the real usage before anything is paid.</p>
-                      
+                      <div>
+                        <div className="font-display text-[17px] font-semibold">Who checks what</div>
+                        <p className="text-slate">One owner per charge, and the data they trust. Upload a usage export and Claude works out how to count it.</p>
+                      </div>
+                      <div className="ml-auto flex flex-wrap gap-2">
+                        <label className="cursor-pointer rounded-md bg-cobalt px-3 py-2 font-medium text-white hover:bg-[#2148e0]">
+                          Import usage file (CSV)
+                          <input type="file" accept=".csv,.txt" className="hidden" onChange={async (e) => { const f = e.target.files?.[0]; if (f) importUsage(await f.text()); e.target.value = ""; }} />
+                        </label>
+                        <button onClick={saveMonth} className="rounded-md border border-line bg-white px-3 py-2 font-medium hover:border-ink/40">Save {month} usage</button>
+                      </div>
                     </div>
+                    {usageNotes.length > 0 && <div className="rounded-lg border border-cobalt-100 bg-cobalt-50 px-3 py-2"><div className="font-medium text-cobalt">From your usage file</div><ul className="list-disc pl-4 text-ink-2">{usageNotes.map((n, i) => <li key={i}>{n}</li>)}</ul></div>}
                     <datalist id="members">{org.members.filter((m) => m.role !== "Viewer").map((m) => <option key={m.id} value={m.name} />)}</datalist>
-                    <table className="w-full border-collapse overflow-hidden rounded-lg bg-white ring-1 ring-line">
-                      <thead className="text-left text-[11px] uppercase tracking-wide text-slate bg-paper">
-                        <tr className="border-b border-zinc-200">
-                          <th className="px-2 py-1">Cost item</th>
-                          <th className="px-2 py-1">Owner</th>
-                          <th className="px-2 py-1">Source of truth</th>
-                          <th className="px-2 py-1">Verified usage (this month)</th>
-                          <th className="px-2 py-1 text-right">Should cost</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {items.map((c) => {
-                          const q = c.actualQty;
-                          const cl = q !== undefined ? cliffInsight(c, q) : null;
-                          return (
-                            <tr key={c.id} className="border-b border-zinc-100 align-top">
-                              <td className="px-2 py-1.5 font-medium">{c.name}<div className="text-[11px] font-normal text-zinc-500">{EVENT_LABEL[c.billingEvent]}</div></td>
-                              <td className="px-2 py-1.5"><input list="members" value={c.owner || ""} onChange={(e) => updateItem(c.id, { owner: e.target.value })} placeholder="Pick a team member" className="w-full rounded border border-zinc-200 px-1.5 py-1" /></td>
-                              <td className="px-2 py-1.5">
-                                <div className="flex gap-1">
-                                  <button onClick={() => updateItem(c.id, { sourceOfTruth: "manual" })} className={`rounded px-1.5 py-0.5 ${c.sourceOfTruth !== "api" ? "bg-ink text-white" : "bg-zinc-100"}`}>Owner verifies</button>
-                                  <button disabled title="Coming soon" className="rounded bg-zinc-100 px-1.5 py-0.5 text-zinc-400">API · soon</button>
-                                </div>
-                                <input value={c.sourceNote || ""} onChange={(e) => updateItem(c.id, { sourceNote: e.target.value })} placeholder="e.g. vendor dashboard export" className="mt-1 w-full rounded border border-zinc-200 px-1.5 py-1 text-[12px]" />
-                              </td>
-                              <td className="px-2 py-1.5">
-                                <input type="number" value={q ?? ""} onChange={(e) => updateItem(c.id, { actualQty: e.target.value === "" ? undefined : Number(e.target.value) })} placeholder={c.unit} className="w-32 rounded border border-zinc-200 px-1.5 py-1" />
-                                {cl && <div className="mt-1 rounded bg-amber-50 px-1.5 py-0.5 text-[11px] text-amber-900">At {fmtN(q!)} you pay {inr(cl.cost)}. At {fmtN(cl.nextQty)} you'd pay {inr(cl.nextCost)}, which is {inr(cl.saving)} less. Ask the vendor to switch to graduated slabs.</div>}
-                              </td>
-                              <td className="px-2 py-1.5 text-right font-medium">{q !== undefined ? inr(costFor(c, q)) : "-"}</td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                    <div className="flex items-center justify-end gap-2">
-                      <span className="text-zinc-600">Expected this month: <b>{inr(round(items.filter((c) => c.recurring !== "one_time" && c.recurring !== "on_request").reduce((s, c) => s + (c.actualQty !== undefined ? costFor(c, c.actualQty) : 0), 0)))}</b> + GST</span>
-                      <button onClick={() => setStep(3)} className="rounded bg-ink px-3 py-1.5 font-medium text-white">Next: check invoice →</button>
+                    <div className="space-y-2">
+                      {items.map((c) => {
+                        const q = c.actualQty;
+                        const cl = q !== undefined ? cliffInsight(c, q) : null;
+                        const isFixed = c.pricing.mode === "fixed" || c.billingEvent === "per_month";
+                        return (
+                          <div key={c.id} className="grid gap-3 rounded-lg border border-line bg-white p-3 md:grid-cols-12">
+                            <div className="md:col-span-3">
+                              <div className="font-medium">{c.name}</div>
+                              <div className="text-[12px] text-slate">{EVENT_LABEL[c.billingEvent]} · {rateText(c)}</div>
+                              {c.history && c.history.length > 0 && (
+                                <div className="mt-1.5 flex flex-wrap gap-1">{c.history.slice(-4).map((h) => <span key={h.month} className="rounded bg-paper px-1.5 py-0.5 font-mono text-[11px] text-slate">{h.month}: {h.qty !== undefined ? fmtN(h.qty) : ""}{h.utilization ? ` ${h.utilization}` : ""}</span>)}</div>
+                              )}
+                            </div>
+                            <div className="md:col-span-3">
+                              <label className="text-[11px] font-medium uppercase tracking-wide text-slate">Owner</label>
+                              <input list="members" value={c.owner || ""} onChange={(e) => updateItem(c.id, { owner: e.target.value })} placeholder="Pick a team member" className="mt-0.5 w-full rounded-md border border-line px-2 py-1.5" />
+                              <div className="mt-2 flex rounded-md bg-paper p-0.5 text-[13px]">
+                                <button onClick={() => updateItem(c.id, { sourceOfTruth: "manual" })} className={`flex-1 rounded px-2 py-1 ${c.sourceOfTruth !== "api" ? "bg-white font-medium shadow-sm" : "text-slate"}`}>Report / file</button>
+                                <button onClick={() => updateItem(c.id, { sourceOfTruth: "api" })} className={`flex-1 rounded px-2 py-1 ${c.sourceOfTruth === "api" ? "bg-white font-medium shadow-sm" : "text-slate"}`}>API</button>
+                              </div>
+                            </div>
+                            <div className="md:col-span-3">
+                              {c.sourceOfTruth === "api" ? (
+                                <>
+                                  <label className="text-[11px] font-medium uppercase tracking-wide text-slate">API or system</label>
+                                  <input value={c.sourceSystem || ""} onChange={(e) => updateItem(c.id, { sourceSystem: e.target.value })} placeholder="e.g. Signzy onboarding API logs" className="mt-0.5 w-full rounded-md border border-line px-2 py-1.5" />
+                                  <label className="mt-2 block text-[11px] font-medium uppercase tracking-wide text-slate">Used in</label>
+                                  <input value={c.usedIn || ""} onChange={(e) => updateItem(c.id, { usedIn: e.target.value })} placeholder="e.g. Investor onboarding, app + web" className="mt-0.5 w-full rounded-md border border-line px-2 py-1.5" />
+                                  <div className="mt-1 text-[11px] text-slate">Live API sync is being built. Until then the owner confirms the count.</div>
+                                </>
+                              ) : (
+                                <>
+                                  <label className="text-[11px] font-medium uppercase tracking-wide text-slate">Where the number comes from</label>
+                                  <input value={c.sourceNote || ""} onChange={(e) => updateItem(c.id, { sourceNote: e.target.value })} placeholder="e.g. vendor dashboard export" className="mt-0.5 w-full rounded-md border border-line px-2 py-1.5" />
+                                  <label className="mt-2 block text-[11px] font-medium uppercase tracking-wide text-slate">Used in</label>
+                                  <input value={c.usedIn || ""} onChange={(e) => updateItem(c.id, { usedIn: e.target.value })} placeholder="Which product or team uses this" className="mt-0.5 w-full rounded-md border border-line px-2 py-1.5" />
+                                </>
+                              )}
+                            </div>
+                            <div className="md:col-span-3">
+                              {isFixed ? (
+                                <>
+                                  <label className="text-[11px] font-medium uppercase tracking-wide text-slate">Is it being used?</label>
+                                  <div className="mt-0.5 flex gap-1">
+                                    {([["full", "Fully"], ["partial", "Partly"], ["unused", "Not used"]] as const).map(([k, l]) => (
+                                      <button key={k} onClick={() => updateItem(c.id, { utilization: k })} className={`flex-1 rounded-md border px-2 py-1.5 text-[13px] ${c.utilization === k ? (k === "unused" ? "border-risk bg-risk-50 text-risk" : "border-cobalt bg-cobalt-50 text-cobalt") : "border-line"}`}>{l}</button>
+                                    ))}
+                                  </div>
+                                  <input value={c.utilNote || ""} onChange={(e) => updateItem(c.id, { utilNote: e.target.value })} placeholder="Note, e.g. only 3 of 10 seats active" className="mt-1.5 w-full rounded-md border border-line px-2 py-1.5 text-[13px]" />
+                                  {(c.history || []).filter((h) => h.utilization === "unused" || h.utilization === "partial").length >= 2 && <div className="mt-1 text-[12px] text-amber">Not fully used for {(c.history || []).filter((h) => h.utilization !== "full").length} months. Worth renegotiating or cancelling.</div>}
+                                </>
+                              ) : (
+                                <>
+                                  <label className="text-[11px] font-medium uppercase tracking-wide text-slate">Confirmed usage this month</label>
+                                  <div className="mt-0.5 flex items-center gap-2">
+                                    <input type="number" value={q ?? ""} onChange={(e) => updateItem(c.id, { actualQty: e.target.value === "" ? undefined : Number(e.target.value), usageRule: undefined })} placeholder={c.unit} className="w-full rounded-md border border-line px-2 py-1.5" />
+                                    <span className="tnum whitespace-nowrap font-semibold">{q !== undefined ? inr(costFor(c, q)) : ""}</span>
+                                  </div>
+                                  {c.usageRule && <div className="mt-1 text-[11px] text-slate">Counted from file: {c.usageRule}</div>}
+                                  {cl && <div className="mt-1 rounded-md bg-amber-50 px-2 py-1 text-[12px] text-amber">At {fmtN(q!)} you pay {inr(cl.cost)}. At {fmtN(cl.nextQty)} you'd pay {inr(cl.nextCost)}. Ask for graduated slabs.</div>}
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="flex items-center justify-end gap-3">
+                      <span className="text-slate">Expected this month <b className="tnum text-ink">{inr(round(items.filter((c) => c.recurring !== "one_time" && c.recurring !== "on_request").reduce((s, c) => s + (c.pricing.mode === "fixed" ? costFor(c, 1) : c.actualQty !== undefined ? costFor(c, c.actualQty) : 0), 0)))}</b> + GST</span>
+                      <button onClick={() => setStep(3)} className="rounded-md bg-ink px-3 py-2 font-medium text-white">Check the invoice</button>
                     </div>
                   </div>
                 )}
 
                 {step === 3 && (
-                  <div className="space-y-2 p-3">
+                  <div className="space-y-3 p-4">
                     <div className="flex flex-wrap items-center gap-2">
-                      <label className="cursor-pointer rounded border border-dashed border-zinc-300 bg-white px-2 py-1 hover:bg-paper">
-                        Upload invoice (PDF / TXT)
+                      <label className="cursor-pointer rounded-md bg-cobalt px-3 py-2 font-medium text-white hover:bg-[#2148e0]">
+                        {v.invoice ? "Upload next invoice" : "Upload invoice"}
                         <input type="file" accept=".pdf,.txt,.docx" className="hidden" onChange={async (e) => { const f = e.target.files?.[0]; if (f) addInvoice(await fileToDoc(f)); e.target.value = ""; }} />
                       </label>
-                      
-                      <button disabled title="Coming soon" className="rounded bg-zinc-100 px-2 py-1 text-zinc-400">Fetch from email · soon</button>
-                      {items.some((c) => c.actualQty === undefined) && <span className="text-amber-700">Tip: add verified usage in step 2 for a full check.</span>}
+                      <span className="text-slate">PDF, Word or text. Invoices from email are coming soon.</span>
                     </div>
 
                     {v.invoice && check && (
                       <>
-                        <div className="flex flex-wrap items-stretch gap-2">
-                          <Stat label="Invoiced (pre-GST)" value={inr(v.invoice.subtotal)} />
-                          <Stat label="Should be" value={inr(check.expectedSubtotal)} />
-                          <Stat label="At risk (pre-GST)" value={inr(check.atRisk)} tone={check.atRisk > 0 ? "bad" : "good"} />
-                          {gst && gst.taxAtRisk > 0 && <Stat label="+ GST on it" value={inr(gst.taxAtRisk)} tone="bad" />}
-                          <div className="ml-auto flex items-center gap-2">
-                            {v.status === "approved" ? (
-                              <span className="rounded bg-ok-50 px-3 py-2 font-semibold text-cobalt">✓ Approved for payment</span>
-                            ) : missingUsage > 0 && check.atRisk === 0 ? (
-                              <div className="flex items-center gap-2">
-                                <span className="max-w-xs text-right text-[13px] text-amber">Rates match the agreement. {missingUsage} line{missingUsage > 1 ? "s" : ""} still need usage confirmed by the owner before you can be sure of the quantity.</span>
-                                <button onClick={() => setStep(2)} className="rounded-md bg-ink px-3 py-2 font-semibold text-white">Confirm usage</button>
-                              </div>
-                            ) : check.atRisk > 0 ? (
-                              <>
-                                <button onClick={runDispute} disabled={!!busy} className="rounded bg-red-600 px-3 py-2 font-semibold text-white hover:bg-red-700 disabled:opacity-50">Dispute {inr(check.atRisk)}</button>
-                                <button onClick={() => update((x) => ({ ...x, status: "approved" }))} className="rounded border border-zinc-300 px-3 py-2 hover:bg-paper">Approve {inr(check.expectedSubtotal)}</button>
-                              </>
-                            ) : (
-                              <button onClick={() => update((x) => ({ ...x, status: "approved" }))} className="rounded bg-cobalt px-3 py-2 font-semibold text-white">Approve {inr(v.invoice.total)}</button>
-                            )}
-                          </div>
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-slate">
+                          <span className="font-medium text-ink">Invoice {v.invoice.invoiceNo}</span>
+                          <span>{v.invoice.date}</span>
+                          {dupInvoice && <span className="rounded bg-risk-50 px-1.5 py-0.5 text-risk">Same invoice number was already checked</span>}
                         </div>
-                        <table className="w-full border-collapse overflow-hidden rounded-lg bg-white ring-1 ring-line">
-                          <thead className="text-left text-[11px] uppercase tracking-wide text-slate bg-paper">
-                            <tr className="border-b border-zinc-200">
-                              <th className="px-2 py-1">Invoice line</th>
-                              <th className="px-2 py-1 text-right">Billed qty</th>
-                              <th className="px-2 py-1 text-right">Verified qty</th>
-                              <th className="px-2 py-1 text-right">Billed</th>
-                              <th className="px-2 py-1 text-right">Should be</th>
-                              <th className="px-2 py-1 text-right">Difference</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {check.lines.map((l, i) => (
-                              <tr key={i} className={`border-b border-zinc-100 align-top ${l.diff && l.diff > 0 ? "bg-red-50/50" : ""}`}>
-                                <td className="px-2 py-1.5">
-                                  <div className="font-medium">{l.description}</div>
-                                  {l.flags.map((f, j) => <div key={j} className="text-[12px] text-red-700">• {f}</div>)}
-                                </td>
-                                <td className="px-2 py-1.5 text-right">{fmtN(l.invoicedQty)}</td>
-                                <td className="px-2 py-1.5 text-right">{l.actualQty !== null ? fmtN(l.actualQty) : "-"}</td>
-                                <td className="px-2 py-1.5 text-right">{inr(l.invoicedAmount)}</td>
-                                <td className="px-2 py-1.5 text-right">{l.expectedAmount !== null ? inr(l.expectedAmount) : "-"}</td>
-                                <td className={`px-2 py-1.5 text-right font-semibold ${l.diff && l.diff > 0 ? "text-red-700" : "text-ok"}`}>{l.diff ? (l.diff > 0 ? "+" : "") + inr(l.diff) : "✓"}</td>
+                        <TermsStrip terms={v.agreement.keyTerms} invoiceDate={v.invoice.date} />
+                        <div className="grid grid-cols-2 gap-2 md:grid-cols-5">
+                          <Stat label="Billed, before GST" value={inr(v.invoice.subtotal)} />
+                          <Stat label="Confirmed by you" value={inr(check.expectedSubtotal)} />
+                          <Stat label="Overbilled" value={inr(check.atRisk)} tone={check.atRisk > 0 ? "bad" : "good"} sub={gst && gst.taxAtRisk > 0 ? `+ ${inr(gst.taxAtRisk)} GST` : undefined} />
+                          <Stat label="Not in agreement" value={inr(check.unmatched)} tone={check.unmatched > 0 ? "warn" : undefined} sub={check.unmatched > 0 ? "Review before paying" : undefined} />
+                          <Stat label="Waiting for usage" value={`${check.pending} line${check.pending === 1 ? "" : "s"}`} tone={check.pending > 0 ? "warn" : undefined} />
+                        </div>
+                        <div className="overflow-hidden rounded-lg border border-line bg-white">
+                          <table className="w-full border-collapse">
+                            <thead className="bg-paper text-left text-[11px] uppercase tracking-wide text-slate">
+                              <tr>
+                                <th className="px-3 py-2">Charge</th>
+                                <th className="px-3 py-2">Status</th>
+                                <th className="px-3 py-2 text-right">Billed qty</th>
+                                <th className="px-3 py-2 text-right">Confirmed</th>
+                                <th className="px-3 py-2 text-right">Billed</th>
+                                <th className="px-3 py-2 text-right">Should be</th>
+                                <th className="px-3 py-2 text-right">Difference</th>
                               </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                        <MinCheck items={items} expected={check.expectedSubtotal} />
-                        <GstPanel inv={v.invoice} buyer={org.gstin} base={check.expectedSubtotal} />
+                            </thead>
+                            <tbody>
+                              {check.lines.map((l, i) => {
+                                const item = items.find((c) => c.id === l.costItemId);
+                                const cl = item ? cliffInsight(item, l.invoicedQty) : null;
+                                return (
+                                  <tr key={i} className="border-t border-line align-top">
+                                    <td className="px-3 py-2">
+                                      <div className="font-medium">{l.description}</div>
+                                      {l.flags.map((f, j) => <div key={j} className="text-[12px] text-slate">{f}</div>)}
+                                      {cl && <div className="text-[12px] text-amber">Slab: {fmtN(l.invoicedQty)} units cost {inr(cl.cost)}. At {fmtN(cl.nextQty)} it would be {inr(cl.nextCost)}.</div>}
+                                    </td>
+                                    <td className="px-3 py-2"><StatusPill s={l.status} /></td>
+                                    <td className="tnum px-3 py-2 text-right">{fmtN(l.invoicedQty)}</td>
+                                    <td className="tnum px-3 py-2 text-right">{l.actualQty !== null ? fmtN(l.actualQty) : "-"}</td>
+                                    <td className="tnum px-3 py-2 text-right">{inr(l.invoicedAmount)}</td>
+                                    <td className="tnum px-3 py-2 text-right">{l.expectedAmount !== null ? inr(l.expectedAmount) : "-"}</td>
+                                    <td className={`tnum px-3 py-2 text-right font-semibold ${l.status === "discrepancy" && (l.diff ?? 0) > 0 ? "text-risk" : "text-slate"}`}>{l.diff !== null && l.diff !== 0 ? (l.diff > 0 ? "+" : "") + inr(l.diff) : "-"}</td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                        <GstPanel inv={v.invoice} buyer={org.gstin} overbilled={check.atRisk} />
+                        <div className="flex flex-wrap items-center justify-end gap-2 rounded-lg border border-line bg-white p-3">
+                          {v.status === "approved" ? (
+                            <span className="rounded-md bg-ok-50 px-3 py-2 font-semibold text-ok">Approved for payment</span>
+                          ) : (
+                            <>
+                              <span className="mr-auto text-slate">
+                                {check.atRisk > 0 ? "Some charges don't match the agreement or your usage." : check.pending > 0 ? "Rates match. Confirm usage before approving." : check.unmatched > 0 ? "Some charges aren't in the agreement. Check if they were approved separately." : "Everything matches the agreement and your usage."}
+                              </span>
+                              {check.pending > 0 && <button onClick={() => setStep(2)} className="rounded-md border border-line px-3 py-2 font-medium hover:border-ink/40">Confirm usage</button>}
+                              {(check.atRisk > 0 || check.unmatched > 0) && <button onClick={runDispute} disabled={!!busy} className="rounded-md bg-risk px-3 py-2 font-semibold text-white disabled:opacity-50">Draft dispute email</button>}
+                              <button disabled={check.pending > 0} onClick={() => update((x) => ({ ...x, status: "approved" }))} className={`rounded-md px-3 py-2 font-semibold ${check.atRisk > 0 || check.unmatched > 0 ? "border border-line" : "bg-cobalt text-white"} disabled:opacity-40`}>
+                                Approve {inr(check.atRisk > 0 ? check.expectedSubtotal : v.invoice.subtotal)} + GST
+                              </button>
+                            </>
+                          )}
+                        </div>
                       </>
                     )}
 
-                    {verdict && (
-                      <div className="grid gap-2 md:grid-cols-2">
-                        <div className="rounded border border-zinc-200 bg-white p-2">
-                          <div className="mb-1 font-semibold">Verdict: <span className={verdict.verdict === "Pay" ? "text-ok" : "text-red-700"}>{verdict.verdict}</span></div>
-                          <ul className="list-disc space-y-0.5 pl-4 text-zinc-700">{verdict.reasons.map((r, i) => <li key={i}>{r}</li>)}</ul>
+                    {v.verdict && (
+                      <div className="grid gap-3 md:grid-cols-2">
+                        <div className="rounded-lg border border-line bg-white p-3">
+                          <div className="mb-1 font-semibold">Recommendation: <span className={v.verdict.verdict === "Pay" ? "text-ok" : "text-risk"}>{v.verdict.verdict}</span></div>
+                          <ul className="list-disc space-y-0.5 pl-4 text-ink-2">{v.verdict.reasons.map((r, i) => <li key={i}>{r}</li>)}</ul>
                         </div>
-                        <div className="rounded border border-zinc-200 bg-white p-2">
+                        <div className="rounded-lg border border-line bg-white p-3">
                           <div className="mb-1 flex items-center font-semibold">Dispute email
-                            <button onClick={() => navigator.clipboard?.writeText(`Subject: ${verdict.email.subject}\n\n${verdict.email.body}`)} className="ml-auto rounded border border-zinc-300 px-1.5 py-0.5 text-[12px] font-normal">Copy</button>
+                            <button onClick={() => navigator.clipboard?.writeText(`Subject: ${v.verdict!.email.subject}\n\n${v.verdict!.email.body}`)} className="ml-auto rounded-md border border-line px-2 py-0.5 text-[12px] font-normal">Copy</button>
                           </div>
-                          <div className="text-[12px] font-medium">Subject: {verdict.email.subject}</div>
-                          <pre className="mt-1 max-h-60 overflow-auto whitespace-pre-wrap font-sans text-[12px] text-zinc-700">{verdict.email.body}</pre>
+                          <div className="text-[13px] font-medium">Subject: {v.verdict.email.subject}</div>
+                          <pre className="mt-1 max-h-64 overflow-auto whitespace-pre-wrap font-sans text-[13px] text-ink-2">{v.verdict.email.body}</pre>
                         </div>
                       </div>
                     )}
@@ -459,20 +574,48 @@ export default function Home() {
   );
 }
 
-function Stat({ label, value, tone }: { label: string; value: string; tone?: "good" | "bad" }) {
+function Stat({ label, value, tone, sub }: { label: string; value: string; tone?: "good" | "bad" | "warn"; sub?: string }) {
+  const t = tone === "bad" ? "border-risk/30 bg-risk-50" : tone === "warn" ? "border-amber/30 bg-amber-50" : tone === "good" ? "border-ok/30 bg-ok-50" : "border-line bg-white";
+  const c = tone === "bad" ? "text-risk" : tone === "warn" ? "text-amber" : tone === "good" ? "text-ok" : "text-ink";
   return (
-    <div className={`rounded border px-3 py-1.5 ${tone === "bad" ? "border-red-200 bg-red-50" : tone === "good" ? "border-cyan-200 bg-ok-50" : "border-zinc-200 bg-white"}`}>
-      <div className="text-[11px] uppercase tracking-wide text-slate bg-paper">{label}</div>
-      <div className={`text-lg font-bold ${tone === "bad" ? "text-red-700" : tone === "good" ? "text-ok" : ""}`}>{value}</div>
+    <div className={`rounded-lg border px-3 py-2 ${t}`}>
+      <div className="text-[11px] font-medium uppercase tracking-wide text-slate">{label}</div>
+      <div className={`tnum font-display text-xl font-semibold ${c}`}>{value}</div>
+      {sub && <div className={`text-[12px] ${c}`}>{sub}</div>}
     </div>
   );
 }
 
-function MinCheck({ items, expected }: { items: CostItem[]; expected: number }) {
-  const min = Math.max(0, ...items.map((c) => c.minCommitment ?? 0));
-  if (!min || expected >= min) return null;
-  return <div className="rounded bg-amber-50 px-2 py-1 text-amber-900">Minimum commitment {inr(min)}: usage-based charges are {inr(expected)}, so a shortfall of {inr(round(min - expected))} may be billed.</div>;
+function StatusPill({ s }: { s: string }) {
+  const m: Record<string, [string, string]> = {
+    verified: ["Matches", "bg-ok-50 text-ok"],
+    fixed: ["Fixed fee OK", "bg-ok-50 text-ok"],
+    discrepancy: ["Doesn't match", "bg-risk-50 text-risk"],
+    pending: ["Waiting for usage", "bg-amber-50 text-amber"],
+    unmatched: ["Not in agreement", "bg-amber-50 text-amber"],
+  };
+  const [t, c] = m[s] || [s, "bg-paper"];
+  return <span className={`whitespace-nowrap rounded-full px-2 py-0.5 text-[12px] font-medium ${c}`}>{t}</span>;
 }
+
+function TermsStrip({ terms, invoiceDate }: { terms?: Agreement["keyTerms"]; invoiceDate?: string }) {
+  if (!terms?.length) return null;
+  const d = invoiceDate ? new Date(invoiceDate) : null;
+  const plus = (n?: number | null) => (d && n ? new Date(d.getTime() + n * 86400000).toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : null);
+  const show = terms.filter((t) => ["payment", "dispute", "penalty", "free_period", "billing_start"].includes(t.kind));
+  if (!show.length) return null;
+  return (
+    <div className="flex flex-wrap gap-2">
+      {show.map((t, i) => (
+        <div key={i} className={`rounded-lg border px-3 py-1.5 text-[13px] ${t.kind === "penalty" ? "border-risk/30 bg-risk-50" : "border-line bg-white"}`}>
+          <span className="font-medium">{t.label}</span>
+          {(t.kind === "payment" || t.kind === "dispute") && plus(t.days) ? <span className="text-slate">: by {plus(t.days)}</span> : <span className="text-slate">: {t.detail}</span>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 
 function Compare({ items, onQuote }: { items: CostItem[]; onQuote: (id: string, rate: number | undefined) => void }) {
   const rows = items.filter((c) => c.pricing.mode !== "fixed" && c.pricing.slabs?.length && c.recurring !== "one_time");
@@ -501,8 +644,8 @@ function Compare({ items, onQuote }: { items: CostItem[]; onQuote: (id: string, 
   );
 }
 
-function GstPanel({ inv, buyer, base }: { inv: Invoice; buyer: string; base: number }) {
-  const g = gstCheck(inv, buyer, base);
+function GstPanel({ inv, buyer, overbilled }: { inv: Invoice; buyer: string; overbilled: number }) {
+  const g = gstCheck(inv, buyer, overbilled);
   const color = { ok: "text-ok", warn: "text-amber", risk: "text-risk" } as const;
   const mark = { ok: "✓", warn: "!", risk: "✕" } as const;
   return (
@@ -527,7 +670,7 @@ function TeamPanel({ org, setOrg, onClose }: { org: Org; setOrg: (o: Org) => voi
     setOrg({ ...org, members: [...org.members, { id: Math.random().toString(36).slice(2, 8), ...n }] });
     setN({ name: "", email: "", role: "Owner" });
   };
-  const included = org.plan === "Growth" ? 25 : 5;
+  const included = org.plan === "Free" ? 3 : 5;
   const extra = Math.max(0, org.members.length - included);
   return (
     <div className="fixed inset-0 z-40 flex justify-end bg-ink/30" onClick={onClose}>
@@ -540,7 +683,7 @@ function TeamPanel({ org, setOrg, onClose }: { org: Org; setOrg: (o: Org) => voi
           <button onClick={onClose} className="ml-auto rounded px-2 py-1 text-slate hover:bg-paper" aria-label="Close">✕</button>
         </div>
         <div className="mt-3 rounded bg-paper px-2 py-1.5 text-slate">
-          {org.members.length} of {included} users included{extra ? ` · ${extra} extra × $2/mo` : ""}
+          {org.members.length} of {included} users included{extra ? ` · ${extra} extra × ₹99 a month` : ""}
         </div>
         <ul className="mt-3 divide-y divide-line">
           {org.members.map((m) => (

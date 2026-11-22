@@ -22,6 +22,9 @@ const INSTRUCTION = `Read the vendor agreement and return JSON with this exact s
     "ask": string,                 // what to ask for, concrete, e.g. "Waive it, or cap it at ₹2,000 once volume crosses 5 lakh emails"
     "why": string                  // one short line on why it matters to the customer
   }],               // up to 4 short risks for the customer (auto-renewal, lock-in, minimums, vague billing terms)
+  "keyTerms": [{ "kind": "payment"|"dispute"|"penalty"|"free_period"|"renewal"|"billing_start"|"other", "label": string, "detail": string, "days": number|null }],
+                                   // payment terms (days to pay), dispute window (days), late payment penalty/interest, free credit or free trial period, renewal/notice, when billing starts. Plain words.
+  "invoiceDay": number|null,       // day of month the invoice is expected, e.g. 5 if "invoices raised at the start of each month"; null if not stated
   "costItems": [{
     "id": string,                  // short slug, e.g. "sms_txn"
     "name": string,                // e.g. "Transactional SMS"

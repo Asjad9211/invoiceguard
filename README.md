@@ -1,36 +1,30 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# InvoiceGuard
 
-## Getting Started
+**Know what you should pay — before you pay it.**
+Built at TPF Product (Un)Conference Builders Day, Bengaluru, 22 Nov 2026 · Request for Builders **#60 — Catch Vendor Overbilling Before You Pay**.
 
-First, run the development server:
+## The problem
+Indian fintechs, NBFCs and AMCs pay usage-based vendors (SMS, WhatsApp, email, KYC APIs) every month. The agreement is signed once and never re-read. Nobody is sure whether billing is per message sent or delivered, or whether a KYC journey abandoned halfway is charged in full. When the invoice arrives, finance asks "is this right?" and no one owns the answer.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## What it does (one screen)
+1. **Understand** — upload the agreement. Claude extracts every cost item (unit, billing event, slab mode, minimums, clause) and asks short tap-questions where terms are unclear. Volume-slab traps are flagged (e.g. 4.6L emails cost more than 5L would).
+2. **Source of truth** — each cost item gets an owner and the data they trust; the owner enters verified monthly usage.
+3. **Invoice** — upload the invoice. Claude maps lines to the agreement; **code** computes what you should pay. Approve, or Dispute with a drafted email citing clauses and evidence.
+4. **Compare** — your unit rate vs market rates from partner vendors.
+
+## How AI is used
+- Claude: reads agreements and invoices (PDF or text) into structured JSON, writes clarifying questions, drafts verdict and dispute email.
+- Code: every number — slab maths (volume vs graduated), cliffs, expected amount, money at risk. Deterministic and auditable.
+
+## What's mocked
+- Sample agreements, invoices, usage and benchmark rates are **illustrative**.
+- Coming soon: email inbox fetch, API integrations for usage, Tally sync, logins/roles, approval routing.
+
+## Tools
+Claude (Claude Code + Claude API, `claude-sonnet-5-5`), Next.js, TypeScript, Tailwind, Vercel.
+
+## Run
 ```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+npm install
+ANTHROPIC_API_KEY=... npm run dev
+```

@@ -90,10 +90,15 @@ export default function AskVoice({ context, vendor }: { context: unknown; vendor
         <div className="fixed inset-x-2 bottom-2 z-50 flex max-h-[80vh] flex-col overflow-hidden rounded-2xl border border-line bg-white shadow-2xl md:inset-x-auto md:right-4 md:bottom-4 md:w-[400px]">
           <div className="flex items-center gap-2 border-b border-line px-3 py-2.5">
             <div className="min-w-0"><div className="font-semibold">Ask InvoiceGuard</div><div className="truncate text-[12px] text-slate">{vendor}</div></div>
-            <select value={lang} onChange={(e) => setLang(e.target.value)} className="ml-auto rounded-full border border-line px-2 py-1 text-[13px]" aria-label="Language">
-              {LANGS.map(([c, n]) => <option key={c} value={c}>{n}</option>)}
-            </select>
-            <button onClick={() => { setOpen(false); window.speechSynthesis?.cancel(); audio.current?.pause(); }} className="rounded-full px-2 py-1 text-slate hover:bg-paper" aria-label="Close">✕</button>
+            <button onClick={() => { setOpen(false); window.speechSynthesis?.cancel(); audio.current?.pause(); }} className="ml-auto rounded-full px-2 py-1 text-slate hover:bg-paper" aria-label="Close">✕</button>
+          </div>
+          <div className="border-b border-line px-3 py-2">
+            <div className="mb-1.5 text-[12px] text-slate">Answer in</div>
+            <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Answer language">
+              {LANGS.map(([c, n, en]) => (
+                <button key={c} role="radio" aria-checked={lang === c} onClick={() => setLang(c)} className={`rounded-full px-3 py-1.5 text-[13px] font-medium ${lang === c ? "bg-gold text-white" : "bg-paper text-ink hover:bg-cobalt-50"}`} title={en}>{n}</button>
+              ))}
+            </div>
           </div>
           <div className="flex-1 space-y-3 overflow-auto p-3">
             {chat.length === 0 && (

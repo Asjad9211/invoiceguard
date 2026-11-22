@@ -86,22 +86,20 @@ export default function Landing() {
             Upload the agreement once, then each invoice. See what you should have been charged, where the bill is off, and whether the GST is right.
           </p>
         </div>
-        <div id="demo" className="mx-auto max-w-6xl px-5 pb-12">
-          <div className="grid gap-5 md:grid-cols-2">
-            <div className="flex flex-col overflow-hidden rounded-2xl border lux-line bg-white text-left shadow-[0_20px_50px_-30px_rgba(14,26,70,.35)]">
-              <div className="flex items-center gap-3 px-5 pt-5">
-                <span className="grid h-8 w-8 place-items-center rounded-full bg-gold text-[14px] font-bold text-white">1</span>
-                <div>
-                  <div className="text-[19px] font-semibold">Watch the 1-minute demo</div>
-                  <div className="text-[13px] lux-muted">The full flow, sound on</div>
-                </div>
-              </div>
-              <div className="p-4"><video src="/demo.mp4" poster="/demo-poster.jpg" controls playsInline preload="metadata" className="block aspect-video w-full rounded-xl bg-[#f4efe6]" /></div>
-            </div>
+        <div id="demo" className="mx-auto max-w-4xl px-5 pb-10">
+          <div className="overflow-hidden rounded-2xl border lux-line bg-white p-2 shadow-[0_30px_70px_-35px_rgba(14,26,70,.45)] md:p-3">
+            <video src="/demo.mp4" poster="/demo-poster.jpg" controls playsInline preload="metadata" className="block aspect-video w-full rounded-xl bg-[#f4efe6]" />
+          </div>
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+            <a href="#try" className="rounded-full bg-gold px-7 py-3.5 text-[16px] font-medium text-white shadow-[0_10px_30px_-12px_rgba(36,72,216,.7)] hover:bg-[#1c3bb8]">Try the actual product →</a>
+            <Link href="/app" className="rounded-full border border-[#17140f]/25 px-6 py-3.5 text-[15px] font-medium hover:border-[#17140f]">Upload your own agreement</Link>
+          </div>
+          <p className="mt-3 text-center text-[13px] lux-muted">1-minute demo, sound on · No login · Free for your first 3 vendors</p>
+        </div>
+        <div id="try" className="mx-auto max-w-2xl scroll-mt-20 px-5 pb-12">
             <div className="flex flex-col rounded-2xl border-2 border-gold bg-white p-5 text-left shadow-[0_20px_50px_-30px_rgba(36,72,216,.5)]">
               <div className="flex items-center gap-3">
-                <span className="grid h-8 w-8 place-items-center rounded-full bg-gold text-[14px] font-bold text-white">2</span>
-                <div>
+                                <div>
                   <div className="text-[19px] font-semibold">Try the real product</div>
                   <div className="text-[13px] lux-muted">No login. Takes about 2 minutes.</div>
                 </div>
@@ -120,8 +118,6 @@ export default function Landing() {
               <p className="mt-3 rounded-lg bg-[#2448d8]/[.07] px-3 py-2 text-[13px]">Or upload <b>your own</b> agreement and invoice. PDF, Word, scan or photo.</p>
               <Link href="/app" className="mt-4 rounded-full bg-gold px-5 py-3 text-center text-[15px] font-medium text-white hover:bg-[#1c3bb8]">Open the app →</Link>
             </div>
-          </div>
-          <p className="mt-4 text-center text-[13px] lux-muted">Free for your first 3 vendors. No card needed. · <Link href="/signup" className="underline">Create a team account</Link></p>
         </div>
         <div className="mx-auto max-w-3xl px-5 pb-14">
           <Examples />

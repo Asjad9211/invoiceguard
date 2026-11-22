@@ -1,4 +1,4 @@
-import { askJSON, FAST_MODEL, type DocInput } from "@/lib/claude";
+import { askJSON, type DocInput } from "@/lib/claude";
 import type { Invoice } from "@/lib/types";
 
 export const maxDuration = 300;
@@ -21,9 +21,9 @@ Return JSON: { "vendor": string, "invoiceNo": string, "date": string,
 "taxLines": [{ "type": "IGST"|"CGST"|"SGST"|"GST", "ratePct": number, "amount": number }] }
 Use "GST" type only if the invoice does not split the tax.
 Amounts in ₹ before tax per line.`,
-      body,
-      FAST_MODEL
+      body
     );
+    if (!data || !Array.isArray(data.lines) || data.lines.length === 0) return Response.json({ error: "Couldn't find any line items in this invoice. Try a clearer PDF." }, { status: 422 });
     return Response.json(data);
   } catch (e) {
     return Response.json({ error: String(e) }, { status: 500 });

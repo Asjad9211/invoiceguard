@@ -38,7 +38,14 @@ export async function askJSON<T>(system: string, instruction: string, doc?: DocI
         messages: [{ role: "user", content }],
       });
       const block = res.content.find((b): b is Anthropic.Messages.ToolUseBlock => b.type === "tool_use");
-      if (block) return clean(block.input) as T;
+      if (block) {
+        let out = block.input as Record<string, unknown>;
+        const keys = Object.keys(out || {});
+        if (keys.length === 1 && out[keys[0]] && typeof out[keys[0]] === "object" && !Array.isArray(out[keys[0]])) out = out[keys[0]] as Record<string, unknown>;
+        if (typeof out === "string") out = JSON.parse(jsonrepair(out));
+        if (!out || Object.keys(out).length === 0) throw new Error("Empty result");
+        return clean(out) as T;
+      }
       const text = res.content.filter((b): b is Anthropic.Messages.TextBlock => b.type === "text").map((b) => b.text).join("");
       return clean(JSON.parse(jsonrepair(extractJSON(text)))) as T;
     } catch (e) {

@@ -297,7 +297,7 @@ export default function Home() {
                   {([
                     [1, `Understand${openQs ? ` · ${openQs} to answer` : " ✓"}`],
                     [2, `Who checks ${setupDone}/${items.length}`],
-                    [3, v.invoice ? (check && check.atRisk > 0 ? `Invoice · ${inr(check.atRisk)} at risk` : missingUsage ? "Invoice · usage needed" : "Invoice ✓") : "Invoice"],
+                    [3, v.invoice ? (check && check.atRisk > 0 ? `Invoice · ${inr(check.atRisk)} at risk` : missingUsage ? "Invoice · usage needed" : v.status === "approved" ? "Invoice ✓" : "Invoice") : "Invoice"],
                   ] as [Step, string][]).map(([s, label]) => (
                     <button key={s} onClick={() => setStep(s)} className={`rounded-md px-3 py-1.5 font-medium ${step === s ? "bg-ink text-white" : "text-slate hover:bg-paper hover:text-ink"}`}>
                       {s} {label}

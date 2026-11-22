@@ -106,7 +106,8 @@ export default function Landing() {
                   <div className="text-[13px] lux-muted">No login. Takes about 2 minutes.</div>
                 </div>
               </div>
-              <div className="mt-4 text-[13px] font-semibold uppercase tracking-wide lux-muted">Download the sample files</div>
+              <Link href="/app" className="mt-4 flex items-center justify-between rounded-xl bg-gold px-4 py-3 text-white hover:bg-[#1c3bb8]"><span><b className="text-[15px]">Fastest: one tap</b> <span className="text-[13px] text-white/80">· open the app, tap “Try with sample vendor”</span></span><span>→</span></Link>
+              <div className="mt-4 text-[13px] font-semibold uppercase tracking-wide lux-muted">Or download the sample files</div>
               <div className="mt-2 grid gap-2">
                 <a href="/samples/nimbus-kyc-agreement.pdf" download className="flex items-center justify-between rounded-xl border lux-line px-4 py-2.5 hover:border-gold"><span><b className="text-[14px]">Agreement</b> <span className="text-[13px] lux-muted">· Nimbus KYC, PDF</span></span><span className="text-gold">↓</span></a>
                 <a href="/samples/nimbus-kyc-invoice-oct-2026.pdf" download className="flex items-center justify-between rounded-xl border lux-line px-4 py-2.5 hover:border-gold"><span><b className="text-[14px]">Invoice</b> <span className="text-[13px] lux-muted">· October, 1,200 onboardings billed</span></span><span className="text-gold">↓</span></a>

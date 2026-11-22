@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { Agreement, CostItem, Invoice, Vendor } from "@/lib/types";
-import { SAMPLES, BENCHMARKS } from "@/lib/samples";
 import { checkInvoice, cliffInsight, cliffZones, costFor, fmtN, inr, round } from "@/lib/calc";
 import { gstCheck } from "@/lib/gst";
 import { DEMO_ORG, loadOrg, saveOrg, ROLE_INFO, type Org, type Role } from "@/lib/org";
@@ -10,8 +9,7 @@ import { Logo } from "@/components/Logo";
 import Link from "next/link";
 
 type Step = 1 | 2 | 3;
-type SampleKey = keyof typeof SAMPLES;
-const STORE = "invoiceguard.v1";
+const STORE = "invoiceguard.v2";
 
 const EVENT_LABEL: Record<string, string> = {
   sent: "Billed when sent",
@@ -23,13 +21,14 @@ const EVENT_LABEL: Record<string, string> = {
   unclear: "Billing event unclear",
 };
 
-async function fileToDoc(f: File): Promise<{ text?: string; pdfBase64?: string }> {
-  if (f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf")) {
+async function fileToDoc(f: File): Promise<{ text?: string; pdfBase64?: string; docxBase64?: string }> {
+  const name = f.name.toLowerCase();
+  if (f.type === "application/pdf" || name.endsWith(".pdf") || name.endsWith(".docx")) {
     const buf = await f.arrayBuffer();
     let bin = "";
     const bytes = new Uint8Array(buf);
     for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
-    return { pdfBase64: btoa(bin) };
+    return name.endsWith(".docx") ? { docxBase64: btoa(bin) } : { pdfBase64: btoa(bin) };
   }
   return { text: await f.text() };
 }
@@ -41,16 +40,6 @@ async function post<T>(url: string, body: unknown): Promise<T> {
   return j as T;
 }
 
-function sampleQty(key: SampleKey, item: CostItem): number | undefined {
-  const hay = `${item.name} ${item.category} ${item.unit}`;
-  const isFixed = item.pricing.mode === "fixed" || item.billingEvent === "per_month";
-  if (isFixed) return 1;
-  for (const k of SAMPLES[key].usageByKeyword) {
-    if (/platform|fee/i.test(k.match.source)) continue;
-    if (k.match.test(hay)) return k.qty;
-  }
-  return undefined;
-}
 
 function rateText(c: CostItem) {
   const s = c.pricing.slabs;
@@ -67,7 +56,6 @@ export default function Home() {
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [verdict, setVerdict] = useState<{ verdict: string; reasons: string[]; email: { subject: string; body: string } } | null>(null);
-  const [sampleOf, setSampleOf] = useState<Record<string, SampleKey>>({});
   const [org, setOrg] = useState<Org>(DEMO_ORG);
   const [teamOpen, setTeamOpen] = useState(false);
   const [showCompare, setShowCompare] = useState(false);
@@ -84,23 +72,22 @@ export default function Home() {
       if (raw) {
         const s = JSON.parse(raw);
         setVendors(s.vendors || []);
-        setSampleOf(s.sampleOf || {});
         setActiveId(s.vendors?.[0]?.id ?? null);
       }
     } catch {}
   }, []);
   useEffect(() => {
     try {
-      localStorage.setItem(STORE, JSON.stringify({ vendors, sampleOf }));
+      localStorage.setItem(STORE, JSON.stringify({ vendors }));
     } catch {}
-  }, [vendors, sampleOf]);
+  }, [vendors]);
 
   const v = vendors.find((x) => x.id === activeId) || null;
   const update = (fn: (v: Vendor) => Vendor) => setVendors((all) => all.map((x) => (x.id === activeId ? fn(x) : x)));
   const updateItem = (id: string, patch: Partial<CostItem>) =>
     update((x) => ({ ...x, agreement: { ...x.agreement, costItems: x.agreement.costItems.map((c) => (c.id === id ? { ...c, ...patch } : c)) } }));
 
-  async function addAgreement(doc: { text?: string; pdfBase64?: string }, sample?: SampleKey) {
+  async function addAgreement(doc: { text?: string; pdfBase64?: string }) {
     setErr(null);
     setBusy("Reading agreement and extracting every cost…");
     try {
@@ -108,7 +95,6 @@ export default function Home() {
       a.costItems = (a.costItems || []).map((c) => ({ ...c, questions: c.questions || [], sourceOfTruth: "manual" }));
       const id = Math.random().toString(36).slice(2, 9);
       setVendors((all) => [{ id, agreement: a, status: "setup" }, ...all]);
-      if (sample) setSampleOf((m) => ({ ...m, [id]: sample }));
       setActiveId(id);
       setStep(1);
       setVerdict(null);
@@ -159,23 +145,6 @@ export default function Home() {
     }
   }
 
-  function fillSampleUsage() {
-    if (!v) return;
-    const key = sampleOf[v.id];
-    if (!key) return;
-    update((x) => ({
-      ...x,
-      agreement: {
-        ...x.agreement,
-        costItems: x.agreement.costItems.map((c) => ({
-          ...c,
-          actualQty: c.actualQty ?? sampleQty(key, c) ?? 0,
-          owner: c.owner || (/(kyc|aadhaar|pan|face|video)/i.test(c.name + c.category) ? (org.members[2]?.name || "Rohan (Onboarding PM)") : (org.members[1]?.name || "Priya (Marketing Ops)")),
-          sourceNote: c.sourceNote || (c.pricing.mode === "fixed" ? "Fixed fee in the agreement" : "Vendor dashboard export, cross-checked with our delivery logs"),
-        })),
-      },
-    }));
-  }
 
   const items = v?.agreement.costItems || [];
   const openQs = items.flatMap((c) => c.questions).filter((q) => !q.answer).length;
@@ -205,16 +174,9 @@ export default function Home() {
         <aside className="flex shrink-0 flex-col gap-1 border-b border-zinc-200 bg-white p-2 md:w-60 md:border-b-0 md:border-r">
           <div className="px-1 pt-1 text-[11px] font-medium uppercase tracking-wide text-slate">Your vendors</div>
           <label className="cursor-pointer rounded border border-dashed border-zinc-300 px-2 py-1.5 text-center hover:bg-paper">
-            + Upload agreement or any doc (PDF / TXT)
-            <input type="file" accept=".pdf,.txt" className="hidden" onChange={async (e) => { const f = e.target.files?.[0]; if (f) addAgreement(await fileToDoc(f)); e.target.value = ""; }} />
+            + Add vendor: upload agreement
+            <input type="file" accept=".pdf,.txt,.docx" className="hidden" onChange={async (e) => { const f = e.target.files?.[0]; if (f) addAgreement(await fileToDoc(f)); e.target.value = ""; }} />
           </label>
-          <div className="flex gap-1">
-            {(Object.keys(SAMPLES) as SampleKey[]).map((k) => (
-              <button key={k} disabled={!!busy} onClick={() => addAgreement({ text: SAMPLES[k].agreement }, k)} className="flex-1 rounded bg-cobalt px-1.5 py-1 text-[12px] font-medium text-white hover:bg-[#2148e0] disabled:opacity-50">
-                {k === "messaging" ? "SMS sample" : "KYC sample"}
-              </button>
-            ))}
-          </div>
           <div className="mt-1 flex gap-1 overflow-x-auto md:flex-col md:overflow-visible">
             {vendors.map((x) => {
               const r = x.invoice ? checkInvoice(x.invoice, x.agreement.costItems).atRisk : 0;
@@ -244,7 +206,7 @@ export default function Home() {
                 <div className="font-display text-xl font-semibold text-ink">Upload any vendor agreement, order form or rate card.</div>
                 <div>Claude reads it, lists every cost, asks what's unclear and suggests what to negotiate.</div>
                 <div>1 · Understand every cost &nbsp; 2 · Set who verifies it &nbsp; 3 · Approve invoices in a minute</div>
-                <div>Tap <b>Try Messaging</b> or <b>Try KYC</b> to see it with a sample.</div>
+                <div>PDF or text. Your files are only used for your account.</div>
               </div>
             </div>
           ) : (
@@ -298,7 +260,8 @@ export default function Home() {
                             <tr key={c.id} className="border-b border-zinc-100 align-top">
                               <td className="px-2 py-1.5">
                                 <div className="font-medium">{c.name}</div>
-                                <div className="text-[11px] text-zinc-500">{c.category} · per {c.unit}</div>
+                                <div className="text-[11px] text-zinc-500">{c.category} · per {c.unit}{c.recurring === "one_time" ? " · one-time" : c.recurring === "on_request" ? " · only if used" : ""}</div>
+                                {c.includes && c.includes.length > 0 && <details className="mt-0.5 text-[12px] text-slate"><summary className="cursor-pointer text-cobalt">Includes {c.includes.length} steps</summary><ul className="list-disc pl-4">{c.includes.map((x) => <li key={x}>{x}</li>)}</ul></details>}
                               </td>
                               <td className="px-2 py-1.5">
                                 <span className={`mr-1 rounded px-1 py-0.5 text-[11px] ${c.billingEvent === "unclear" ? "bg-red-100 text-red-800" : "bg-zinc-100 text-zinc-700"}`}>{EVENT_LABEL[c.billingEvent] || c.billingEvent}</span>
@@ -336,8 +299,8 @@ export default function Home() {
                       </tbody>
                     </table>
                     <Negotiate list={v.agreement.negotiate} />
-                    {showCompare ? <Compare items={items} /> : (
-                      <button onClick={() => setShowCompare(true)} className="rounded-lg border border-line bg-white px-3 py-2 font-medium hover:border-cobalt hover:text-cobalt">Compare my rates with the market</button>
+                    {showCompare ? <Compare items={items} onQuote={(id, rate) => updateItem(id, { quoteRate: rate })} /> : (
+                      <button onClick={() => setShowCompare(true)} className="rounded-lg border border-line bg-white px-3 py-2 font-medium hover:border-cobalt hover:text-cobalt">Compare with another vendor's quote</button>
                     )}
                     <div className="flex justify-end">
                       <button onClick={() => setStep(2)} className="rounded bg-ink px-3 py-1.5 font-medium text-white">Next: who verifies each cost →</button>
@@ -349,7 +312,7 @@ export default function Home() {
                   <div className="space-y-2 p-3">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="text-zinc-700">For every cost, name one owner and the data you trust. Each month they confirm the real usage before anything is paid.</p>
-                      {sampleOf[v.id] && <button onClick={fillSampleUsage} className="ml-auto rounded border border-cobalt px-2 py-1 text-ok hover:bg-cobalt-50">Fill sample owners &amp; usage</button>}
+                      
                     </div>
                     <datalist id="members">{org.members.filter((m) => m.role !== "Viewer").map((m) => <option key={m.id} value={m.name} />)}</datalist>
                     <table className="w-full border-collapse overflow-hidden rounded-lg bg-white ring-1 ring-line">
@@ -388,7 +351,7 @@ export default function Home() {
                       </tbody>
                     </table>
                     <div className="flex items-center justify-end gap-2">
-                      <span className="text-zinc-600">Expected this month: <b>{inr(round(items.reduce((s, c) => s + (c.actualQty !== undefined ? costFor(c, c.actualQty) : 0), 0)))}</b> + GST</span>
+                      <span className="text-zinc-600">Expected this month: <b>{inr(round(items.filter((c) => c.recurring !== "one_time" && c.recurring !== "on_request").reduce((s, c) => s + (c.actualQty !== undefined ? costFor(c, c.actualQty) : 0), 0)))}</b> + GST</span>
                       <button onClick={() => setStep(3)} className="rounded bg-ink px-3 py-1.5 font-medium text-white">Next: check invoice →</button>
                     </div>
                   </div>
@@ -399,9 +362,9 @@ export default function Home() {
                     <div className="flex flex-wrap items-center gap-2">
                       <label className="cursor-pointer rounded border border-dashed border-zinc-300 bg-white px-2 py-1 hover:bg-paper">
                         Upload invoice (PDF / TXT)
-                        <input type="file" accept=".pdf,.txt" className="hidden" onChange={async (e) => { const f = e.target.files?.[0]; if (f) addInvoice(await fileToDoc(f)); e.target.value = ""; }} />
+                        <input type="file" accept=".pdf,.txt,.docx" className="hidden" onChange={async (e) => { const f = e.target.files?.[0]; if (f) addInvoice(await fileToDoc(f)); e.target.value = ""; }} />
                       </label>
-                      {sampleOf[v.id] && <button disabled={!!busy} onClick={() => addInvoice({ text: SAMPLES[sampleOf[v.id]].invoice })} className="rounded bg-cobalt px-2 py-1 font-medium text-white hover:bg-[#2148e0] disabled:opacity-50">Use sample invoice</button>}
+                      
                       <button disabled title="Coming soon" className="rounded bg-zinc-100 px-2 py-1 text-zinc-400">Fetch from email · soon</button>
                       {items.some((c) => c.actualQty === undefined) && <span className="text-amber-700">Tip: add verified usage in step 2 for a full check.</span>}
                     </div>
@@ -499,30 +462,28 @@ function MinCheck({ items, expected }: { items: CostItem[]; expected: number }) 
   return <div className="rounded bg-amber-50 px-2 py-1 text-amber-900">Minimum commitment {inr(min)}: usage-based charges are {inr(expected)}, so a shortfall of {inr(round(min - expected))} may be billed.</div>;
 }
 
-function Compare({ items }: { items: CostItem[] }) {
-  const rows = items
-    .map((c) => {
-      if (c.pricing.mode === "fixed") return null;
-      const b = BENCHMARKS.find((x) => x.match.test(`${c.name} ${c.category}`));
-      if (!b || !c.pricing.slabs?.length) return null;
-      const yours = c.pricing.slabs[0].rate;
-      if (b.rate >= yours) return { c, b, yours, saving: 0 };
-      const qty = c.actualQty;
-      const saving = qty ? round(costFor(c, qty) - qty * b.rate) : null;
-      return { c, b, yours, saving };
-    })
-    .filter(Boolean) as { c: CostItem; b: (typeof BENCHMARKS)[number]; yours: number; saving: number | null }[];
+function Compare({ items, onQuote }: { items: CostItem[]; onQuote: (id: string, rate: number | undefined) => void }) {
+  const rows = items.filter((c) => c.pricing.mode !== "fixed" && c.pricing.slabs?.length && c.recurring !== "one_time");
   if (!rows.length) return null;
   return (
-    <div className="rounded border border-zinc-200 bg-white p-2">
-      <div className="mb-1 flex items-center gap-2 font-semibold">Market comparison <span className="text-[12px] font-normal text-slate">Rates from vendors on our network. Your data is never used for this.</span></div>
-      <div className="flex flex-wrap gap-1.5">
-        {rows.map(({ c, b, yours, saving }) => (
-          <div key={c.id} className="rounded bg-paper px-2 py-1">
-            <span className="font-medium">{c.name}</span>: you {inr(yours)} · best {inr(b.rate)} ({b.vendor})
-            {b.rate < yours ? <span className="ml-1 text-ok">{saving ? `save ~${inr(saving)}/mo` : `${Math.round((1 - b.rate / yours) * 100)}% cheaper`}</span> : <span className="ml-1 text-zinc-500">you're at market</span>}
-          </div>
-        ))}
+    <div className="rounded-lg border border-line bg-white p-3">
+      <div className="font-semibold">Compare with another quote</div>
+      <div className="mb-2 text-[13px] text-slate">Enter a rate another vendor has quoted you. We'll show the monthly difference using your confirmed usage.</div>
+      <div className="space-y-1.5">
+        {rows.map((c) => {
+          const yours = c.pricing.slabs[0].rate;
+          const q = c.quoteRate;
+          const qty = c.actualQty;
+          const diff = q !== undefined && qty ? round(costFor(c, qty) - qty * q) : null;
+          return (
+            <div key={c.id} className="flex flex-wrap items-center gap-2">
+              <span className="min-w-40 font-medium">{c.name}</span>
+              <span className="text-slate">you pay {inr(yours)}</span>
+              <input type="number" step="0.01" value={q ?? ""} onChange={(e) => onQuote(c.id, e.target.value === "" ? undefined : Number(e.target.value))} placeholder="Other quote ₹" className="w-32 rounded border border-line px-2 py-1" />
+              {q !== undefined && (diff !== null ? <span className={diff > 0 ? "text-ok" : "text-slate"}>{diff > 0 ? `You'd save ${inr(diff)} a month` : "No saving at your usage"}</span> : <span className="text-slate">Add usage in step 2 to see the monthly difference</span>)}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

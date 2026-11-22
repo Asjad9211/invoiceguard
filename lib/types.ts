@@ -35,6 +35,9 @@ export interface CostItem {
   taxPct: number | null;
   clause: string; // clause reference or quote
   questions: Question[];
+  includes?: string[]; // APIs/steps bundled into this charge
+  recurring?: "monthly" | "one_time" | "on_request";
+  quoteRate?: number;
   // set by user
   owner?: string;
   sourceOfTruth?: "manual" | "api";

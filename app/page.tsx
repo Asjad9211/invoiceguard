@@ -27,7 +27,7 @@ const STEPS = [
 const GST = [
   ["GSTIN format", "We check the vendor's GSTIN and yours on every invoice."],
   ["IGST or CGST + SGST", "Different states means IGST. Same state means CGST + SGST. If the wrong one is charged, you may not get input tax credit."],
-  ["Rate", "Most digital and telecom services are taxed at 18%. We flag anything else so you can confirm the SAC code."],
+  ["Rate", "Most digital and IT services are taxed at 18%. We flag anything else so you can confirm the SAC code."],
   ["Maths", "We check that the tax adds up, and show how much GST you were charged on amounts that were overbilled."],
   ["Basic details", "Invoice number, date and your GSTIN need to be on the invoice to claim credit."],
 ];
@@ -83,40 +83,33 @@ export default function Landing() {
           <div className="md:col-span-6">
             <div className="rounded-xl border border-line bg-white shadow-[0_24px_60px_-30px_rgba(11,18,32,.35)]">
               <div className="flex items-center gap-2 border-b border-line px-4 py-2.5 text-sm">
-                <span className="font-medium">PingWave Communications</span>
-                <span className="text-slate">· October invoice</span>
-                <span className="ml-auto rounded bg-risk-50 px-2 py-0.5 font-mono text-[11px] text-risk">3 ISSUES</span>
+                <span className="font-medium">KYC vendor agreement</span>
+                <span className="ml-auto rounded bg-cobalt-50 px-2 py-0.5 font-mono text-[11px] text-cobalt">READ BY INVOICEGUARD</span>
               </div>
-              <div className="grid grid-cols-3 divide-x divide-line border-b border-line">
-                {[["Billed", "₹95,960"], ["Should be", "₹77,240"], ["Difference", "₹18,720"]].map(([k, v], i) => (
-                  <div key={k} className="px-4 py-3">
-                    <div className="font-mono text-[10px] uppercase tracking-wider text-slate">{k}</div>
-                    <div className={`tnum font-display text-2xl font-semibold ${i === 2 ? "text-risk" : ""}`}>{v}</div>
-                  </div>
-                ))}
+              <div className="px-4 py-3">
+                <div className="font-mono text-[10px] uppercase tracking-wider text-slate">Charge found</div>
+                <div className="mt-0.5 font-medium">Price per onboarding</div>
+                <div className="text-[13px] text-slate">One price covers 15 steps: PAN OCR, Aadhaar OCR, video, face match and more</div>
               </div>
-              <ul className="divide-y divide-line text-sm">
+              <div className="border-t border-line bg-cobalt-50/60 px-4 py-3">
+                <div className="text-[13px] font-medium">The agreement doesn't say:</div>
+                <div className="mt-2 flex flex-wrap gap-1.5 text-[12px]">
+                  {["Billed when started or completed?", "Drop-offs billed in full?", "Retries counted again?"].map((q) => <span key={q} className="rounded-md border border-cobalt-100 bg-white px-2 py-1">{q}</span>)}
+                </div>
+              </div>
+              <ul className="divide-y divide-line border-t border-line text-sm">
                 {[
-                  ["Transactional SMS", "Billed 4,20,000, your logs show 3,70,000", "+₹7,500"],
-                  ["WhatsApp utility", "Charged ₹0.88 each, agreement says ₹0.195", "+₹8,220"],
-                  ["Platform support", "Not in the agreement", "+₹3,000"],
-                  ["GST", "IGST at 18%, correct for Maharashtra to Karnataka", "OK"],
-                ].map(([a, b, c]) => (
+                  ["Invoice check", "Onboardings billed vs onboardings your team confirms"],
+                  ["GST check", "Same state, so CGST + SGST expected"],
+                  ["Worth negotiating", "Pay per step for journeys that drop off midway"],
+                ].map(([a, b]) => (
                   <li key={a} className="flex items-start gap-3 px-4 py-2.5">
-                    <div className="flex-1">
-                      <div className="font-medium">{a}</div>
-                      <div className="text-[12px] text-slate">{b}</div>
-                    </div>
-                    <div className={`tnum font-mono text-[13px] ${c === "OK" ? "text-ok" : "text-risk"}`}>{c}</div>
+                    <svg viewBox="0 0 24 24" className="mt-0.5 h-4 w-4 shrink-0 text-cobalt" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 12l2 2 4-4M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z" /></svg>
+                    <div><div className="font-medium">{a}</div><div className="text-[12px] text-slate">{b}</div></div>
                   </li>
                 ))}
               </ul>
-              <div className="flex gap-2 border-t border-line p-3">
-                <span className="flex-1 rounded-md bg-risk px-3 py-2 text-center text-sm font-medium text-white">Dispute ₹18,720</span>
-                <span className="flex-1 rounded-md border border-line px-3 py-2 text-center text-sm">Approve ₹77,240</span>
-              </div>
             </div>
-            <p className="mt-2 text-right text-[11px] text-slate">Example using a sample agreement</p>
           </div>
         </div>
       </section>
@@ -126,7 +119,7 @@ export default function Landing() {
           {[
             ["The agreement is vague", "It says “per message processed”. Does that include failed messages? Most teams only find out when they argue about a bill."],
             ["Nobody owns the number", "Finance has the invoice. Marketing or product has the usage data. The bill often gets paid without anyone comparing the two."],
-            ["Slabs can cost you more", "With some slab rules, sending 9,500 messages at ₹1 costs more than sending 10,001 at ₹0.90."],
+            ["Bundles hide the real cost", "Many vendors charge one price per journey. If a customer drops off halfway, you may still be paying for the whole journey."],
           ].map(([t, d]) => (
             <div key={t} className="py-7 md:px-6 md:first:pl-0">
               <div className="font-display text-lg font-semibold">{t}</div>

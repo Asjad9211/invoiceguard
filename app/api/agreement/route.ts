@@ -35,6 +35,8 @@ const INSTRUCTION = `Read the vendor agreement and return JSON with this exact s
     "freeUnits": number|null,
     "taxPct": number|null,
     "clause": string,              // clause number + short quote
+    "recurring": "monthly"|"one_time"|"on_request",  // one-time setup fees and optional services are NOT monthly
+    "includes": string[],          // if one price covers a bundle of APIs or steps (e.g. "per onboarding"), list them; else []
     "questions": [{ "id": string, "text": string, "options": string[] }]
   }]
 }
@@ -42,6 +44,8 @@ Rules:
 - "volume" = one rate applies to ALL units once a slab is reached. "graduated" = each slab rate applies only to units inside that slab. "flat" = single rate, one slab from 1 to null. "fixed" = fixed fee per period, one slab with rate = fee.
 - If slab mode is not explicit, pick the most likely and add a question asking which mode applies.
 - KYC / multi-step APIs: create ONE cost item per step (e.g. OTP, PAN, Aadhaar, face match, video KYC) so a user who drops off mid-journey is charged only for steps hit. Ask how drop-offs and failed calls are billed if not stated.
+- Bundled pricing: if one price covers a whole journey (e.g. "price per onboarding" covering OCR, PAN, Aadhaar, video, face match), make ONE cost item, list the steps in "includes", and ask: (a) is an onboarding billed when started or only when completed, (b) are journeys abandoned midway billed in full, per step, or not at all, (c) are retries counted again. Suggest in "negotiate" to pay per step used for drop-offs, or only for completed onboardings.
+- If a fee is struck through, marked waived, NA or optional in the document, say so in plainEnglish and do not treat it as a monthly charge.
 - Messaging: always clarify sent vs delivered vs attempted, multi-part messages, failed/DND messages, DLT charges, if not explicit.
 - Ask at most 2 questions per cost item, only where the agreement is genuinely unclear. Options must be short (max 5 words) and include "Not stated in agreement".
 - Do NOT create a cost item for an overall minimum commitment across services, or for GST; mention an overall minimum in "risks".

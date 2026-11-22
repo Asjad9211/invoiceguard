@@ -25,30 +25,29 @@ export default function Examples() {
   const e = EX[i];
   return (
     <div>
-      <div className="mb-3 flex flex-wrap gap-1.5">
+      <div className="mb-5 flex flex-wrap justify-center gap-1.5">
         {EX.map((x, k) => (
-          <button key={x.tab} onClick={() => { setI(k); setHold(true); }} className={`rounded-full px-3 py-1 text-[13px] font-medium transition-colors ${k === i ? "bg-white text-ink" : "bg-white/5 text-white/70 ring-1 ring-white/15 hover:text-white"}`}>{x.tab}</button>
+          <button key={x.tab} onClick={() => { setI(k); setHold(true); }} className={`rounded-full px-3 py-1 text-[13px] font-medium transition-colors ${k === i ? "bg-white text-black" : "text-white/55 ring-1 ring-white/10 hover:text-white"}`}>{x.tab}</button>
         ))}
       </div>
-      <div key={i} className="glow fadeup overflow-hidden rounded-2xl border border-white/10 bg-white text-ink">
-        <div className="flex items-center gap-2 border-b border-line bg-paper px-4 py-2.5 text-sm"><span className="flex gap-1"><span className="h-2.5 w-2.5 rounded-full bg-coral" /><span className="h-2.5 w-2.5 rounded-full bg-sun" /><span className="h-2.5 w-2.5 rounded-full bg-teal" /></span>
+      <div key={i} className="fadeup overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-b from-[#161616] to-[#0b0b0b] text-left text-[#f4f2ee] shadow-[0_40px_120px_-40px_rgba(214,185,124,.35)]">
+        <div className="flex items-center gap-2 border-b border-white/10 px-6 py-3.5 text-sm"><span className="flex gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-white/15" /><span className="h-2.5 w-2.5 rounded-full bg-white/15" /><span className="h-2.5 w-2.5 rounded-full bg-white/15" /></span>
           <span className="font-medium">{e.doc}</span>
-          <span className="ml-auto rounded bg-cobalt-50 px-2 py-0.5 font-mono text-[11px] text-cobalt">READ BY INVOICEGUARD</span>
+          <span className="ml-auto font-mono text-[10px] tracking-widest text-gold">READ BY INVOICEGUARD</span>
         </div>
-        <div className="px-4 py-3">
-          <div className="text-[11px] font-medium uppercase tracking-wider text-slate">Charge found</div>
-          <div className="mt-0.5 font-medium">{e.charge}</div>
-          <div className="text-[13px] text-slate">{e.detail}</div>
+        <div className="px-6 py-5">
+          <div className="text-[11px] uppercase tracking-[0.18em] text-white/45">Charge found</div>
+          <div className="mt-1 font-serif text-[28px] leading-tight">{e.charge}</div>
+          <div className="mt-1 text-[14px] text-white/55">{e.detail}</div>
         </div>
-        <div className="border-t border-line bg-cobalt-50/60 px-4 py-3">
-          <div className="text-[13px] font-medium">The agreement doesn&apos;t say:</div>
-          <div className="mt-2 flex flex-wrap gap-1.5 text-[12px]">{e.unclear.map((q) => <span key={q} className="rounded-md border border-cobalt-100 bg-white px-2 py-1">{q}</span>)}</div>
+        <div className="border-t border-white/10 px-6 py-5">
+          <div className="text-[11px] uppercase tracking-[0.18em] text-white/45">The agreement doesn&apos;t say</div>
+          <div className="mt-2 flex flex-wrap gap-1.5 text-[12px]">{e.unclear.map((q) => <span key={q} className="rounded-full border border-gold/40 px-3 py-1 text-gold">{q}</span>)}</div>
         </div>
-        <ul className="divide-y divide-line border-t border-line text-sm">
+        <ul className="grid border-t border-white/10 text-sm md:grid-cols-3 md:divide-x md:divide-white/10">
           {e.checks.map(([a, b], n) => (
-            <li key={a} className="flex items-start gap-3 px-4 py-2.5">
-              <svg viewBox="0 0 24 24" className={`mt-0.5 h-4 w-4 shrink-0 ${["text-cobalt", "text-coral", "text-teal"][n]}`} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 12l2 2 4-4M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z" /></svg>
-              <div><div className="font-medium">{a}</div><div className="text-[12px] text-slate">{b}</div></div>
+            <li key={a} className="px-6 py-4">
+              <div className="text-[11px] uppercase tracking-[0.18em] text-white/45">{a}</div><div className="mt-1 text-[14px]">{b}</div>
             </li>
           ))}
         </ul>

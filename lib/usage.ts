@@ -23,6 +23,21 @@ export function parseCSV(text: string): string[][] {
 
 export type UsageRule = { costItemId: string; mode: "count" | "sum"; sumColumn?: string | null; filters: { column: string; op: "equals" | "in" | "not_in" | "contains"; values: string[] }[]; explanation: string };
 
+export function validateRule(headers: string[], r: UsageRule): string | null {
+  const has = (c?: string | null) => !!c && headers.some((h) => h.trim().toLowerCase() === c.trim().toLowerCase());
+  for (const f of r.filters || []) if (!has(f.column)) return `column "${f.column}" is not in the file`;
+  if (r.mode === "sum" && !has(r.sumColumn)) return `column "${r.sumColumn}" is not in the file`;
+  return null;
+}
+
+export function distinctValues(headers: string[], rows: string[][], col: string, max = 12): string[] {
+  const i = headers.findIndex((h) => h.trim().toLowerCase() === col.trim().toLowerCase());
+  if (i < 0) return [];
+  const seen = new Map<string, number>();
+  for (const r of rows) { const v = (r[i] ?? "").trim(); seen.set(v, (seen.get(v) || 0) + 1); }
+  return [...seen.entries()].sort((a, b) => b[1] - a[1]).slice(0, max).map(([v, n]) => `${v || "(blank)"} (${n})`);
+}
+
 export function applyRule(headers: string[], rows: string[][], r: UsageRule): number {
   const idx = (c: string) => headers.findIndex((h) => h.trim().toLowerCase() === c.trim().toLowerCase());
   const norm = (x: string) => (x ?? "").trim().toLowerCase();

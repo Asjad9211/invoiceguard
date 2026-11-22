@@ -4,7 +4,7 @@ import { Component, useEffect, useMemo, useRef, useState, type ReactNode } from 
 import type { Agreement, CostItem, Invoice, Vendor } from "@/lib/types";
 import { checkInvoice, cliffInsight, cliffZones, costFor, fmtN, inr, round } from "@/lib/calc";
 import { gstCheck } from "@/lib/gst";
-import { parseCSV, applyRule, type UsageRule } from "@/lib/usage";
+import { parseCSV, applyRule, validateRule, distinctValues, type UsageRule } from "@/lib/usage";
 import { computeAlerts, monthLabel } from "@/lib/alerts";
 import { DEMO_ORG, DEFAULT_CHECKLIST, loadOrg, saveOrg, ROLE_INFO, type Org, type Role } from "@/lib/org";
 import { Logo } from "@/components/Logo";
@@ -111,7 +111,7 @@ export default function Home() {
     }
   }
 
-  async function importUsage(text: string) {
+  async function importUsage(text: string, fileName = "usage file") {
     if (!v) return;
     const rows = parseCSV(text);
     if (rows.length < 2) { setErr("That file has no rows."); return; }
@@ -121,11 +121,17 @@ export default function Home() {
     try {
       const res = await post<{ rules: UsageRule[]; notes: string[] }>("/api/usage", {
         headers, sample: data.slice(0, 25), rowCount: data.length,
+        distinct: Object.fromEntries(headers.map((h) => [h, distinctValues(headers, data, h)]).filter(([, v]) => (v as string[]).length > 0 && (v as string[]).length < 12)),
         costItems: v.agreement.costItems.filter((c) => c.pricing.mode !== "fixed").map((c) => ({ id: c.id, name: c.name, unit: c.unit, billingEvent: c.billingEvent, includes: c.includes, answers: c.questions.filter((q) => q.answer).map((q) => `${q.text} ${q.answer}`) })),
       });
       update((x) => ({ ...x, agreement: { ...x.agreement, costItems: x.agreement.costItems.map((c) => {
         const r = res.rules.find((r) => r.costItemId === c.id);
-        return r ? { ...c, actualQty: applyRule(headers, data, r), usageRule: r.explanation, sourceNote: c.sourceNote || "Uploaded usage file" } : c;
+        if (!r) return c;
+        const bad = validateRule(headers, r);
+        if (bad) return { ...c, usageRule: `Not counted: ${bad}. Enter the number manually.` };
+        const n = applyRule(headers, data, r);
+        const where = r.filters.map((f) => `${f.column} ${f.op.replace("_", " ")} ${f.values.join("/")}`).join(", ");
+        return { ...c, actualQty: n, usageRule: `${fmtN(n)} of ${fmtN(data.length)} rows${where ? ` where ${where}` : ""} (${fileName}, imported ${new Date().toLocaleDateString("en-IN")}). ${r.explanation} Check and edit if needed.`, sourceNote: c.sourceNote || "Uploaded usage file" };
       }) } }));
       setUsageNotes([`${fmtN(data.length)} rows read.`, ...(res.notes || [])]);
     } catch (e) {
@@ -391,7 +397,7 @@ export default function Home() {
                       <div className="ml-auto flex flex-wrap gap-2">
                         <label className="cursor-pointer rounded-md bg-cobalt px-3 py-2 font-medium text-white hover:bg-[#2148e0]">
                           Import usage file (CSV)
-                          <input type="file" accept=".csv,.txt" className="hidden" onChange={async (e) => { const f = e.target.files?.[0]; if (f) importUsage(await f.text()); e.target.value = ""; }} />
+                          <input type="file" accept=".csv,.txt" className="hidden" onChange={async (e) => { const f = e.target.files?.[0]; if (f) importUsage(await f.text(), f.name); e.target.value = ""; }} />
                         </label>
                         <button onClick={saveMonth} className="rounded-md border border-line bg-white px-3 py-2 font-medium hover:border-ink/40">Save {month} usage</button>
                       </div>

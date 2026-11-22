@@ -127,7 +127,7 @@ export function checkInvoice(invoice: Invoice, items: CostItem[]) {
     } else if (actual === null) {
       expected = null;
       status = Math.abs(rateGap) > 1 ? "discrepancy" : "pending";
-      if (status === "pending") flags.push("Waiting for the owner to confirm usage");
+      flags.push(`Quantity not verified yet: ${fmtN(qty)} units claimed by the vendor. Waiting for the owner to confirm usage.`);
     } else {
       expected = costFor(item, actual);
       if (qty !== actual) flags.push(`Billed ${fmtN(qty)} units, confirmed usage is ${fmtN(actual)}`);
@@ -138,7 +138,7 @@ export function checkInvoice(invoice: Invoice, items: CostItem[]) {
   }
   const atRisk = round(rows.filter((r) => r.status === "discrepancy").reduce((s, r) => s + Math.max(0, r.diff ?? 0), 0));
   const unmatched = round(rows.filter((r) => r.status === "unmatched").reduce((s, r) => s + r.invoicedAmount, 0));
-  const pending = rows.filter((r) => r.status === "pending").length;
+  const pending = rows.filter((r) => r.flags.some((f) => f.startsWith("Quantity not verified"))).length;
   const confirmedExpected = round(rows.reduce((s, r) => s + (r.expectedAmount ?? 0), 0));
   return { lines: rows, atRisk, unmatched, pending, expectedSubtotal: confirmedExpected };
 }

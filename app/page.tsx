@@ -18,10 +18,24 @@ function Icon({ d, className = "h-5 w-5" }: { d: string; className?: string }) {
 }
 
 const STEPS = [
-  { n: "01", t: "Read the agreement", d: "Upload a vendor agreement, order form or rate card. We list every charge in it: the rate, the slabs, minimums, free units and the clause it comes from. If something is vague, like whether SMS is billed when sent or when delivered, we ask you.", icon: I.doc },
+  { n: "01", t: "Read the agreement", d: "Upload a vendor agreement, order form or rate card: PDF, Word, a scan or a photo. We list every charge, every financial liability, and run your own checklist on it. If something is vague, like whether drop-offs are billed, we ask you.", icon: I.doc },
   { n: "02", t: "Decide who checks what", d: "For each charge, pick one person and the data they trust: a report, a usage file or an API log. Upload a usage export and Claude works out which rows are billable. For licences, note whether they're fully used, so patterns show up over time.", icon: I.user },
-  { n: "03", t: "Check the invoice", d: "Upload the invoice. We work out what you should pay from the agreement and the confirmed usage, check the GST, and show payment and dispute deadlines. You approve it, or send a dispute email we draft. We remind you when an invoice is late.", icon: I.receipt },
+  { n: "03", t: "Check the invoice", d: "Upload the invoice. Picking it up from your email is coming soon. We work out what you should pay, check the GST, show payment and dispute deadlines, and draft the dispute. We remember how each dispute ended.", icon: I.receipt },
   { n: "04", t: "Know what to negotiate", d: "We point out what is worth asking the vendor to change: fixed fees, slab rules, minimum commitments, how failed calls are billed and rate locks.", icon: I.tag },
+];
+
+
+const CASES = [
+  ["KYC and onboarding", "One price per onboarding that covers 15 steps. We ask whether drop-offs are billed and check started versus completed journeys."],
+  ["SMS, WhatsApp and email", "Sent versus delivered, multi-part messages, template categories, DLT charges and the platform fee on top."],
+  ["Payment gateway", "MDR by payment mode, refunds and chargeback fees, and settlement deductions against the rate card."],
+  ["Cloud and hosting", "Reserved versus on-demand, committed spend, free credits that expire and egress charges."],
+  ["SaaS licences", "Seats billed versus seats in use, auto-renewals, and price increases at renewal."],
+  ["Telecom and calling", "Per-minute versus per-pulse billing, rentals for numbers you no longer use, and plan minimums."],
+  ["Agencies and consultants", "Retainers, hours capped in the contract, and work billed outside the agreed scope."],
+  ["Logistics and couriers", "Weight slabs, fuel surcharges, RTO charges and COD fees."],
+  ["Data and credit bureaus", "Per-hit pricing, hits on failed lookups and minimum monthly billing."],
+  ["Facilities and rentals", "Escalation clauses, maintenance charges and pass-through utilities."],
 ];
 
 const GST = [
@@ -48,6 +62,7 @@ export default function Landing() {
           <Link href="/" aria-label="InvoiceGuard home"><Logo /></Link>
           <nav className="hidden gap-5 text-sm text-slate md:flex">
             <a href="#how" className="hover:text-ink">How it works</a>
+            <a href="#use-cases" className="hover:text-ink">Use cases</a>
             <a href="#gst" className="hover:text-ink">GST</a>
             <a href="#teams" className="hover:text-ink">Teams</a>
             <a href="#pricing" className="hover:text-ink">Pricing</a>
@@ -147,6 +162,21 @@ export default function Landing() {
             <p className="text-sm leading-relaxed text-white/75 md:col-span-2">
               We use Claude, an AI model, to read agreements and invoices. The amounts themselves, like slab maths, what you should pay and GST, are calculated by plain code. Every number links back to a clause or a usage figure, so you can check it yourself.
             </p>
+          </div>
+        </div>
+      </section>
+
+      <section id="use-cases" className="border-b border-line">
+        <div className="mx-auto max-w-6xl px-4 py-16">
+          <SectionHead k="Works with any agreement" t="If a vendor bills you against an agreement, InvoiceGuard can read it." />
+          <p className="mt-3 max-w-2xl text-[15px] text-slate">Upload a PDF, a Word file, a scan or a photo. Claude reads the pricing and terms the same way, whatever the vendor or format. A few common ones:</p>
+          <div className="mt-8 grid gap-px overflow-hidden rounded-xl border border-line bg-line sm:grid-cols-2 lg:grid-cols-5">
+            {CASES.map(([t, d]) => (
+              <div key={t} className="bg-white p-5">
+                <div className="font-display font-semibold">{t}</div>
+                <p className="mt-1.5 text-[13px] leading-relaxed text-slate">{d}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>

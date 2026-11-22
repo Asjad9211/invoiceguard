@@ -10,7 +10,7 @@ function getClient() {
   return client;
 }
 
-export type DocInput = { text?: string; pdfBase64?: string; docxBase64?: string };
+export type DocInput = { text?: string; pdfBase64?: string; docxBase64?: string; images?: string[] };
 
 /** Ask Claude for JSON. Accepts plain text or a PDF. Retries once on bad JSON. */
 export const FAST_MODEL = process.env.CLAUDE_FAST_MODEL || "claude-haiku-5-5";
@@ -24,6 +24,7 @@ export async function askJSON<T>(system: string, instruction: string, doc?: DocI
   if (doc?.pdfBase64) {
     content.push({ type: "document", source: { type: "base64", media_type: "application/pdf", data: doc.pdfBase64 } });
   }
+  for (const img of doc?.images || []) content.push({ type: "image", source: { type: "base64", media_type: "image/jpeg", data: img } });
   if (doc?.text) content.push({ type: "text", text: `<document>\n${doc.text}\n</document>` });
   content.push({ type: "text", text: instruction + "\n\nYou MUST respond by calling the submit tool with the result object. Never use em dashes." });
 

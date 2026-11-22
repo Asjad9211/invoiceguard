@@ -62,6 +62,8 @@ export interface Agreement {
   negotiate?: { type: string; item: string; ask: string; why: string }[];
   keyTerms?: { kind: "payment" | "dispute" | "penalty" | "free_period" | "renewal" | "billing_start" | "other"; label: string; detail: string; days?: number | null }[];
   invoiceDay?: number | null; // day of month the invoice is expected
+  liabilities?: { label: string; detail: string; severity: "high" | "medium" | "low"; amount?: string | null }[];
+  checklist?: { item: string; status: "found" | "missing" | "unclear"; detail: string }[];
 }
 
 export interface InvoiceLine {
@@ -93,5 +95,6 @@ export interface Vendor {
   status: "setup" | "ready" | "approved" | "disputed";
   history?: { invoiceNo: string; date: string; total: number; status: string }[];
   verdict?: { verdict: string; reasons: string[]; email: { subject: string; body: string } };
+  disputes?: { invoiceNo: string; date: string; amount: number; status: "open" | "credit_note" | "corrected" | "rejected" | "paid_anyway"; note?: string }[];
   disputeEmail?: string;
 }

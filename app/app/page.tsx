@@ -6,8 +6,9 @@ import { checkInvoice, cliffInsight, cliffZones, costFor, fmtN, inr, round } fro
 import { gstCheck } from "@/lib/gst";
 import { parseCSV, applyRule, type UsageRule } from "@/lib/usage";
 import { computeAlerts, monthLabel } from "@/lib/alerts";
-import { DEMO_ORG, loadOrg, saveOrg, ROLE_INFO, type Org, type Role } from "@/lib/org";
+import { DEMO_ORG, DEFAULT_CHECKLIST, loadOrg, saveOrg, ROLE_INFO, type Org, type Role } from "@/lib/org";
 import { Logo } from "@/components/Logo";
+import { fileToDoc, type Doc } from "@/lib/files";
 import Link from "next/link";
 
 type Step = 1 | 2 | 3;
@@ -23,17 +24,6 @@ const EVENT_LABEL: Record<string, string> = {
   unclear: "Billing event unclear",
 };
 
-async function fileToDoc(f: File): Promise<{ text?: string; pdfBase64?: string; docxBase64?: string }> {
-  const name = f.name.toLowerCase();
-  if (f.type === "application/pdf" || name.endsWith(".pdf") || name.endsWith(".docx")) {
-    const buf = await f.arrayBuffer();
-    let bin = "";
-    const bytes = new Uint8Array(buf);
-    for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
-    return name.endsWith(".docx") ? { docxBase64: btoa(bin) } : { pdfBase64: btoa(bin) };
-  }
-  return { text: await f.text() };
-}
 
 async function post<T>(url: string, body: unknown): Promise<T> {
   const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -42,7 +32,7 @@ async function post<T>(url: string, body: unknown): Promise<T> {
   try {
     j = JSON.parse(raw);
   } catch {
-    throw new Error(r.status === 504 ? "This document took too long to read. Try again, or upload just the pricing pages." : "Something went wrong reading this document. Please try again.");
+    throw new Error(r.status === 504 ? "This document took too long to read. Try again, or upload just the pricing pages." : r.status === 413 ? "This file is too large to send. Try a smaller PDF or just the pricing pages." : `Something went wrong reading this document (error ${r.status}). Please try again.`);
   }
   if (!r.ok || j.error) throw new Error(j.error || "Request failed");
   return j as unknown as T;
@@ -65,6 +55,10 @@ export default function Home() {
   const [err, setErr] = useState<string | null>(null);
   const setVerdict = (_: null) => {};
   const [usageNotes, setUsageNotes] = useState<string[]>([]);
+  const [stage, setStage] = useState("");
+  const [checklist, setChecklist] = useState<string[]>(DEFAULT_CHECKLIST);
+  useEffect(() => { try { const c = localStorage.getItem("invoiceguard.checklist"); if (c) setChecklist(JSON.parse(c)); } catch {} }, []);
+  const saveChecklist = (c: string[]) => { setChecklist(c); try { localStorage.setItem("invoiceguard.checklist", JSON.stringify(c)); } catch {} };
   const [bellOpen, setBellOpen] = useState(false);
   const [org, setOrg] = useState<Org>(DEMO_ORG);
   const [teamOpen, setTeamOpen] = useState(false);
@@ -99,11 +93,11 @@ export default function Home() {
   const updateItem = (id: string, patch: Partial<CostItem>) =>
     update((x) => ({ ...x, agreement: { ...x.agreement, costItems: x.agreement.costItems.map((c) => (c.id === id ? { ...c, ...patch } : c)) } }));
 
-  async function addAgreement(doc: { text?: string; pdfBase64?: string }) {
+  async function addAgreement(doc: Doc) {
     setErr(null);
     setBusy("Reading agreement and extracting every cost…");
     try {
-      const a = await post<Agreement>("/api/agreement", doc);
+      const a = await post<Agreement>("/api/agreement", { ...doc, checklist });
       a.costItems = (a.costItems || []).map((c) => ({ ...c, questions: c.questions || [], sourceOfTruth: "manual" }));
       const id = Math.random().toString(36).slice(2, 9);
       setVendors((all) => [{ id, agreement: a, status: "setup" }, ...all]);
@@ -149,7 +143,7 @@ export default function Home() {
     })) } }));
   }
 
-  async function addInvoice(doc: { text?: string; pdfBase64?: string }) {
+  async function addInvoice(doc: Doc) {
     if (!v) return;
     setErr(null);
     setBusy("Reading invoice and matching lines to the agreement…");
@@ -195,9 +189,10 @@ export default function Home() {
         lines: check.lines,
         gstFindings: gst?.findings.filter((f) => f.level !== "ok"),
         gstChargedOnOverbilling: gst?.taxAtRisk,
+        pastDisputes: (v.disputes || []).filter((d) => d.invoiceNo !== v.invoice?.invoiceNo),
         clauses: v.agreement.costItems.map((c) => ({ id: c.id, name: c.name, clause: c.clause, billingEvent: c.billingEvent, answers: c.questions.map((q) => `${q.text} → ${q.answer ?? "unanswered"}`) })),
       });
-      update((x) => ({ ...x, status: "disputed", verdict: res || undefined }));
+      update((x) => ({ ...x, status: "disputed", verdict: res || undefined, disputes: [...(x.disputes || []).filter((d) => d.invoiceNo !== (x.invoice?.invoiceNo || "")), { invoiceNo: x.invoice?.invoiceNo || "", date: x.invoice?.date || "", amount: check.atRisk + check.unmatched, status: "open" }] }));
     } catch (e) {
       setErr(String(e));
     } finally {
@@ -253,8 +248,9 @@ export default function Home() {
           <div className="px-1 pt-1 text-[11px] font-medium uppercase tracking-wide text-slate">Your vendors</div>
           <label className="cursor-pointer rounded border border-dashed border-zinc-300 px-2 py-1.5 text-center hover:bg-paper">
             + Add vendor: upload agreement
-            <input type="file" accept=".pdf,.txt,.docx" className="hidden" onChange={async (e) => { const f = e.target.files?.[0]; if (f) addAgreement(await fileToDoc(f)); e.target.value = ""; }} />
+            <input type="file" accept=".pdf,.docx,.txt,.png,.jpg,.jpeg,.webp" className="hidden" onChange={async (e) => { const f = e.target.files?.[0]; e.target.value = ""; if (!f) return; try { setStage(f.name); addAgreement(await fileToDoc(f)); } catch (x) { setErr(String(x)); } }} />
           </label>
+          <button onClick={() => setActiveId(null)} className={`rounded px-2 py-1.5 text-left font-medium ${activeId === null ? "bg-ink text-white" : "hover:bg-paper"}`}>Dashboard</button>
           <div className="mt-1 flex gap-1 overflow-x-auto md:flex-col md:overflow-visible">
             {vendors.map((x) => {
               const r = x.invoice ? checkInvoice(x.invoice, x.agreement.costItems).atRisk : 0;
@@ -275,18 +271,11 @@ export default function Home() {
 
         {/* workspace */}
         <main className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          {busy && <div className="shrink-0 animate-pulse bg-cobalt-50 px-3 py-1.5 text-cobalt">⏳ {busy}</div>}
+          {busy && <Reading label={busy} file={stage} />}
           {err && <div className="shrink-0 bg-red-50 px-3 py-1.5 text-red-700">{err} <button className="underline" onClick={() => setErr(null)}>dismiss</button></div>}
 
           {!v ? (
-            <div className="grid flex-1 place-items-center p-6 text-center text-zinc-500">
-              <div className="max-w-md space-y-2">
-                <div className="font-display text-xl font-semibold text-ink">Upload any vendor agreement, order form or rate card.</div>
-                <div>Claude reads it, lists every cost, asks what's unclear and suggests what to negotiate.</div>
-                <div>1 · Understand every cost &nbsp; 2 · Set who verifies it &nbsp; 3 · Approve invoices in a minute</div>
-                <div>PDF, Word or text. Your files are only used for your account.</div>
-              </div>
-            </div>
+            <Dashboard vendors={vendors} open={(id) => { setActiveId(id); setStep(3); }} setDispute={(vid, idx, status) => setVendors((all) => all.map((x) => x.id === vid ? { ...x, disputes: (x.disputes || []).map((d, k) => k === idx ? { ...d, status } : d) } : x))} remove={(id) => setVendors((all) => all.filter((x) => x.id !== id))} />
           ) : (
             <>
               {/* vendor header + stepper */}
@@ -376,6 +365,8 @@ export default function Home() {
                         })}
                       </tbody>
                     </table>
+                    <Liabilities list={v.agreement.liabilities} />
+                    <Checklist result={v.agreement.checklist} list={checklist} save={saveChecklist} />
                     <Negotiate list={v.agreement.negotiate} />
                     {showCompare ? <Compare items={items} onQuote={(id, rate) => updateItem(id, { quoteRate: rate })} /> : (
                       <button onClick={() => setShowCompare(true)} className="rounded-lg border border-line bg-white px-3 py-2 font-medium hover:border-cobalt hover:text-cobalt">Compare with another vendor's quote</button>
@@ -483,7 +474,7 @@ export default function Home() {
                     <div className="flex flex-wrap items-center gap-2">
                       <label className="cursor-pointer rounded-md bg-cobalt px-3 py-2 font-medium text-white hover:bg-[#2148e0]">
                         {v.invoice ? "Upload next invoice" : "Upload invoice"}
-                        <input type="file" accept=".pdf,.txt,.docx" className="hidden" onChange={async (e) => { const f = e.target.files?.[0]; if (f) addInvoice(await fileToDoc(f)); e.target.value = ""; }} />
+                        <input type="file" accept=".pdf,.docx,.txt,.png,.jpg,.jpeg,.webp" className="hidden" onChange={async (e) => { const f = e.target.files?.[0]; e.target.value = ""; if (!f) return; try { setStage(f.name); addInvoice(await fileToDoc(f)); } catch (x) { setErr(String(x)); } }} />
                       </label>
                       <span className="text-slate">PDF, Word or text. Invoices from email are coming soon.</span>
                     </div>
@@ -495,6 +486,9 @@ export default function Home() {
                           <span>{v.invoice.date}</span>
                           {dupInvoice && <span className="rounded bg-risk-50 px-1.5 py-0.5 text-risk">Same invoice number was already checked</span>}
                         </div>
+                        {(v.disputes || []).filter((d) => d.invoiceNo !== v.invoice!.invoiceNo).length > 0 && (
+                          <div className="rounded-lg border border-line bg-white px-3 py-2 text-[13px]"><span className="font-medium">Past disputes with this vendor: </span>{(v.disputes || []).filter((d) => d.invoiceNo !== v.invoice!.invoiceNo).map((d) => `${d.invoiceNo} (${inr(d.amount)}, ${DISPUTE_LABEL[d.status]})`).join(" · ")}</div>
+                        )}
                         <TermsStrip terms={v.agreement.keyTerms} invoiceDate={v.invoice.date} />
                         <div className="grid grid-cols-2 gap-2 md:grid-cols-5">
                           <Stat label="Billed, before GST" value={inr(v.invoice.subtotal)} />
@@ -752,6 +746,149 @@ function Negotiate({ list }: { list?: { type: string; item: string; ask: string;
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+const DISPUTE_LABEL: Record<string, string> = { open: "open", credit_note: "credit note received", corrected: "invoice corrected", rejected: "vendor rejected", paid_anyway: "paid anyway" };
+
+function Reading({ label, file }: { label: string; file: string }) {
+  const steps = label.toLowerCase().includes("invoice")
+    ? ["Reading the invoice", "Matching each line to the agreement", "Checking GST details", "Working out what you should pay"]
+    : label.toLowerCase().includes("usage")
+    ? ["Looking at your columns", "Working out which rows are billable", "Counting every row"]
+    : ["Reading the whole document", "Finding every charge and slab", "Checking when you get billed", "Listing financial liabilities", "Running your checklist", "Writing questions and negotiation points"];
+  const [i, setI] = useState(0);
+  useEffect(() => { const t = setInterval(() => setI((x) => Math.min(x + 1, steps.length - 1)), 9000); return () => clearInterval(t); }, [steps.length]);
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-ink/40 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-xl bg-white p-5 shadow-2xl">
+        <div className="flex items-center gap-3">
+          <div className="h-9 w-9 animate-spin rounded-full border-[3px] border-cobalt-100 border-t-cobalt" />
+          <div className="min-w-0">
+            <div className="font-display text-lg font-semibold">{label.replace(/…$/, "")}</div>
+            {file && <div className="truncate text-[13px] text-slate">{file}</div>}
+          </div>
+        </div>
+        <ol className="mt-4 space-y-2">
+          {steps.map((s, k) => (
+            <li key={s} className={`flex items-center gap-2 text-[14px] transition-opacity ${k > i ? "opacity-40" : ""}`}>
+              <span className={`grid h-5 w-5 place-items-center rounded-full text-[11px] ${k < i ? "bg-cobalt text-white" : k === i ? "border-2 border-cobalt" : "border border-line"}`}>{k < i ? "✓" : ""}</span>
+              {s}
+            </li>
+          ))}
+        </ol>
+        <div className="mt-4 h-1 overflow-hidden rounded bg-paper"><div className="h-full w-1/3 animate-[slide_1.2s_ease-in-out_infinite] rounded bg-cobalt" /></div>
+        <div className="mt-3 text-[12px] text-slate">Long agreements can take up to 2 minutes. Claude reads every page, including tables and annexures.</div>
+      </div>
+    </div>
+  );
+}
+
+function Liabilities({ list }: { list?: Agreement["liabilities"] }) {
+  if (!list?.length) return null;
+  const c = { high: "bg-risk-50 text-risk", medium: "bg-amber-50 text-amber", low: "bg-paper text-slate" } as const;
+  return (
+    <div className="rounded-lg border border-line bg-white">
+      <div className="border-b border-line px-3 py-2 font-semibold">Financial liabilities in this agreement</div>
+      <ul className="divide-y divide-line">
+        {list.map((l, i) => (
+          <li key={i} className="flex gap-3 px-3 py-2">
+            <span className={`h-fit whitespace-nowrap rounded-full px-2 py-0.5 text-[12px] font-medium ${c[l.severity] || c.low}`}>{l.severity}</span>
+            <div><div className="font-medium">{l.label}{l.amount ? <span className="ml-2 font-mono text-[13px] text-ink-2">{l.amount}</span> : null}</div><div className="text-[13px] text-slate">{l.detail}</div></div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function Checklist({ result, list, save }: { result?: Agreement["checklist"]; list: string[]; save: (c: string[]) => void }) {
+  const [edit, setEdit] = useState(false);
+  const [draft, setDraft] = useState(list.join("\n"));
+  const mark = { found: ["✓", "text-ok"], missing: ["✕", "text-risk"], unclear: ["?", "text-amber"] } as const;
+  return (
+    <div className="rounded-lg border border-line bg-white">
+      <div className="flex items-center border-b border-line px-3 py-2">
+        <span className="font-semibold">Your agreement checklist</span>
+        <button onClick={() => { setDraft(list.join("\n")); setEdit(!edit); }} className="ml-auto text-[13px] font-medium text-cobalt">{edit ? "Cancel" : "Edit checklist"}</button>
+      </div>
+      {edit ? (
+        <div className="p-3">
+          <textarea value={draft} onChange={(e) => setDraft(e.target.value)} rows={10} className="w-full rounded-md border border-line p-2 text-[13px]" />
+          <div className="mt-2 flex items-center gap-2"><button onClick={() => { save(draft.split("\n").map((x) => x.trim()).filter(Boolean)); setEdit(false); }} className="rounded-md bg-ink px-3 py-1.5 font-medium text-white">Save checklist</button><span className="text-[12px] text-slate">One check per line. Used for every agreement you upload from now on.</span></div>
+        </div>
+      ) : result?.length ? (
+        <ul className="grid gap-px bg-line md:grid-cols-2">
+          {result.map((r, i) => (
+            <li key={i} className="flex gap-2 bg-white px-3 py-2">
+              <span className={`font-mono font-bold ${(mark[r.status] || mark.unclear)[1]}`}>{(mark[r.status] || mark.unclear)[0]}</span>
+              <div><div className="text-[13px] font-medium">{r.item}</div><div className="text-[12px] text-slate">{r.detail}</div></div>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <div className="px-3 py-2 text-[13px] text-slate">{list.length} checks will run on the next agreement you upload.</div>
+      )}
+    </div>
+  );
+}
+
+function Dashboard({ vendors, open, setDispute, remove }: { vendors: Vendor[]; open: (id: string) => void; setDispute: (vid: string, idx: number, s: NonNullable<Vendor["disputes"]>[number]["status"]) => void; remove: (id: string) => void }) {
+  if (!vendors.length) return (
+    <div className="grid flex-1 place-items-center p-6 text-center">
+      <div className="max-w-md space-y-2 text-slate">
+        <div className="font-display text-xl font-semibold text-ink">Add your first vendor</div>
+        <div>Upload a vendor agreement, order form or rate card: PDF, Word, a scan or a photo. Claude reads it, lists every charge and liability, and runs your checklist.</div>
+      </div>
+    </div>
+  );
+  const rows = vendors.map((v) => {
+    const c = v.invoice ? checkInvoice(v.invoice, v.agreement.costItems) : null;
+    return { v, c };
+  });
+  const billed = rows.reduce((s, r) => s + (r.v.invoice?.total || 0), 0);
+  const over = rows.reduce((s, r) => s + (r.c?.atRisk || 0), 0);
+  const openDisputes = vendors.flatMap((v) => v.disputes || []).filter((d) => d.status === "open");
+  const recovered = vendors.flatMap((v) => v.disputes || []).filter((d) => d.status === "credit_note" || d.status === "corrected").reduce((s, d) => s + d.amount, 0);
+  return (
+    <div className="min-h-0 flex-1 space-y-3 overflow-auto p-4">
+      <div className="font-display text-[19px] font-semibold">All vendors</div>
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+        <Stat label="Vendors" value={String(vendors.length)} />
+        <Stat label="Latest invoices, incl. GST" value={inr(round(billed))} />
+        <Stat label="Overbilled found" value={inr(round(over))} tone={over > 0 ? "bad" : undefined} />
+        <Stat label="Recovered" value={inr(round(recovered))} tone={recovered > 0 ? "good" : undefined} sub={openDisputes.length ? `${openDisputes.length} dispute${openDisputes.length > 1 ? "s" : ""} open` : undefined} />
+      </div>
+      <div className="overflow-x-auto rounded-lg border border-line bg-white">
+        <table className="w-full text-left">
+          <thead className="bg-paper text-[11px] uppercase tracking-wide text-slate"><tr><th className="px-3 py-2">Vendor</th><th className="px-3 py-2">Latest invoice</th><th className="px-3 py-2 text-right">Amount</th><th className="px-3 py-2">Status</th><th className="px-3 py-2">Dispute</th><th className="px-3 py-2"></th></tr></thead>
+          <tbody>
+            {rows.map(({ v, c }) => {
+              const dIdx = (v.disputes || []).length - 1;
+              const d = dIdx >= 0 ? v.disputes![dIdx] : null;
+              const status = v.status === "approved" ? ["Approved", "bg-ok-50 text-ok"] : v.status === "disputed" ? ["Disputed", "bg-risk-50 text-risk"] : !v.invoice ? ["No invoice yet", "bg-paper text-slate"] : c && c.pending ? ["Waiting for usage", "bg-amber-50 text-amber"] : ["To review", "bg-cobalt-50 text-cobalt"];
+              return (
+                <tr key={v.id} className="border-t border-line align-middle">
+                  <td className="px-3 py-2"><button onClick={() => open(v.id)} className="font-medium hover:text-cobalt">{v.agreement.vendor}</button><div className="text-[12px] text-slate">{v.agreement.costItems.length} charges</div></td>
+                  <td className="px-3 py-2 text-[13px]">{v.invoice ? <>{v.invoice.invoiceNo}<div className="text-slate">{v.invoice.date}</div></> : "-"}</td>
+                  <td className="tnum px-3 py-2 text-right">{v.invoice ? inr(v.invoice.total) : "-"}</td>
+                  <td className="px-3 py-2"><span className={`rounded-full px-2 py-0.5 text-[12px] font-medium ${status[1]}`}>{status[0]}</span></td>
+                  <td className="px-3 py-2">
+                    {d ? (
+                      <select value={d.status} onChange={(e) => setDispute(v.id, dIdx, e.target.value as typeof d.status)} className="rounded-md border border-line px-2 py-1 text-[13px]">
+                        {Object.entries(DISPUTE_LABEL).map(([k, l]) => <option key={k} value={k}>{inr(d.amount)}: {l}</option>)}
+                      </select>
+                    ) : <span className="text-slate">-</span>}
+                  </td>
+                  <td className="px-3 py-2 text-right"><button onClick={() => { if (confirm(`Remove ${v.agreement.vendor}?`)) remove(v.id); }} className="text-[13px] text-slate hover:text-risk">Remove</button></td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <div className="text-[12px] text-slate">Dispute outcomes are remembered. The next dispute email for that vendor mentions what happened last time.</div>
     </div>
   );
 }

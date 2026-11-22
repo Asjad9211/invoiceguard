@@ -28,3 +28,20 @@ export const ROLE_INFO: Record<Role, string> = {
   Owner: "Verify usage for assigned vendors",
   Viewer: "Read-only for finance and audit",
 };
+
+export const DEFAULT_CHECKLIST = [
+  "All charges and rates, including one-time and optional fees",
+  "When each charge is billed (sent, delivered, started, completed)",
+  "Slab rules and whether they apply to all units or per band",
+  "Minimum commitment and what happens to a shortfall",
+  "Advance payments, expiry and refund terms",
+  "Payment terms and late payment interest or penalties",
+  "Invoice dispute window and process",
+  "Price change or escalation clause",
+  "Term, auto-renewal and notice period",
+  "Termination and exit costs",
+  "Liability cap and indemnity",
+  "SLA, uptime and service credits",
+  "Usage reports the vendor must share",
+  "Data protection and where data is stored",
+];

@@ -116,6 +116,7 @@ export function checkInvoice(invoice: Invoice, items: CostItem[]) {
     const atBilledQty = costFor(item, qty);
     const rateGap = round(amount - atBilledQty);
     if (Math.abs(rateGap) > 1) flags.push(`Rate mismatch: at agreed rates ${fmtN(qty)} units = ${inr(atBilledQty)}, billed ${inr(round(amount))}`);
+    if ((item.includes?.length ?? 0) > 1 && desc.length === 1) flags.push(`One price covers ${item.includes!.length} steps, but the invoice has no journey-wise breakup (started, completed, dropped). Ask the vendor for it before paying.`);
     const fixed = item.pricing.mode === "fixed" || item.billingEvent === "per_month";
     const actual = fixed ? null : item.actualQty ?? null;
     let expected: number | null;

@@ -22,6 +22,10 @@ const INSTRUCTION = `Read the vendor agreement and return JSON with this exact s
     "ask": string,                 // what to ask for, concrete, e.g. "Waive it, or cap it at ₹2,000 once volume crosses 5 lakh emails"
     "why": string                  // one short line on why it matters to the customer
   }],               // up to 4 short risks for the customer (auto-renewal, lock-in, minimums, vague billing terms)
+  "liabilities": [{ "label": string, "detail": string, "severity": "high"|"medium"|"low", "amount": string|null }],
+                                   // every financial liability or exposure for the customer: minimum commitments, unspent advance forfeited, late interest, penalties, liability caps, indemnities, auto-renewal, lock-in, exit/termination costs, price escalation, charges for change requests. Highest exposure first.
+  "checklist": [{ "item": string, "status": "found"|"missing"|"unclear", "detail": string }],
+                                   // one entry per item in the CHECKLIST below, in the same order; detail = what the document says, or what is missing
   "keyTerms": [{ "kind": "payment"|"dispute"|"penalty"|"free_period"|"renewal"|"billing_start"|"other", "label": string, "detail": string, "days": number|null }],
                                    // payment terms (days to pay), dispute window (days), late payment penalty/interest, free credit or free trial period, renewal/notice, when billing starts. Plain words.
   "invoiceDay": number|null,       // day of month the invoice is expected, e.g. 5 if "invoices raised at the start of each month"; null if not stated
@@ -56,11 +60,25 @@ Rules:
 
 export async function POST(req: Request) {
   try {
-    const body = (await req.json()) as DocInput;
-    if (!body.text && !body.pdfBase64 && !body.docxBase64) return Response.json({ error: "No agreement provided" }, { status: 400 });
-    const data = await askJSON<Agreement>(SYSTEM, INSTRUCTION, body);
+    const body = (await req.json()) as DocInput & { checklist?: string[] };
+    if (!body.text && !body.pdfBase64 && !body.docxBase64 && !body.images?.length) return Response.json({ error: "No agreement provided" }, { status: 400 });
+    const list = (body.checklist || []).map((c, i) => `${i + 1}. ${c}`).join("\n") || "(none)";
+    const raw = await askJSON<Agreement & Record<string, unknown>>(SYSTEM, INSTRUCTION + "\n\nCHECKLIST:\n" + list, body);
+    const data = { ...raw, ...(findWith(raw, "costItems") || {}) } as unknown as Agreement;
+    data.costItems = (Array.isArray(data.costItems) ? data.costItems : []).map((c, i) => ({ ...c, id: c.id || `item_${i + 1}`, questions: Array.isArray(c.questions) ? c.questions.map((q, j) => ({ ...q, id: q.id || `q${i}_${j}`, options: Array.isArray(q.options) ? q.options : [] })) : [], pricing: { mode: c.pricing?.mode || "flat", slabs: Array.isArray(c.pricing?.slabs) ? c.pricing.slabs.map((s) => ({ from: Number(s.from) || 0, to: s.to === null || s.to === undefined ? null : Number(s.to), rate: Number(s.rate) || 0 })) : [] } }));
     return Response.json(data);
   } catch (e) {
     return Response.json({ error: String(e) }, { status: 500 });
   }
+}
+
+function findWith(o: unknown, key: string, depth = 0): Record<string, unknown> | null {
+  if (!o || typeof o !== "object" || depth > 3) return null;
+  const r = o as Record<string, unknown>;
+  if (Array.isArray(r[key])) return r;
+  for (const v of Object.values(r)) {
+    const f = findWith(v, key, depth + 1);
+    if (f) return f;
+  }
+  return null;
 }

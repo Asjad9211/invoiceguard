@@ -6,7 +6,7 @@ export const maxDuration = 60;
 export async function POST(req: Request) {
   try {
     const body = (await req.json()) as DocInput & { costItems: { id: string; name: string; unit: string }[] };
-    if (!body.text && !body.pdfBase64) return Response.json({ error: "No invoice provided" }, { status: 400 });
+    if (!body.text && !body.pdfBase64 && !body.docxBase64) return Response.json({ error: "No invoice provided" }, { status: 400 });
     const items = (body.costItems || []).map((c) => `${c.id}: ${c.name} (${c.unit})`).join("\n");
     const data = await askJSON<Invoice>(
       "You extract vendor invoices precisely. Never invent numbers.",

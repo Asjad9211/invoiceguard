@@ -17,15 +17,10 @@ export function saveOrg(o: Org) {
   } catch {}
 }
 export const DEMO_ORG: Org = {
-  name: "Acme Finserv Pvt Ltd",
-  gstin: "29AABCA1234F1Z5",
+  name: "Your company",
+  gstin: "",
   plan: "Free",
-  members: [
-    { id: "u1", name: "You", email: "you@acmefinserv.in", role: "Admin" },
-    { id: "u2", name: "Priya (Marketing Ops)", email: "priya@acmefinserv.in", role: "Owner" },
-    { id: "u3", name: "Rohan (Onboarding PM)", email: "rohan@acmefinserv.in", role: "Owner" },
-    { id: "u4", name: "Meera (Finance)", email: "meera@acmefinserv.in", role: "Approver" },
-  ],
+  members: [{ id: "u1", name: "You", email: "", role: "Admin" }],
 };
 export const ROLE_INFO: Record<Role, string> = {
   Admin: "Company, billing, users, everything",

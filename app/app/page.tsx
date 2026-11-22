@@ -206,7 +206,7 @@ export default function Home() {
                 <div className="font-display text-xl font-semibold text-ink">Upload any vendor agreement, order form or rate card.</div>
                 <div>Claude reads it, lists every cost, asks what's unclear and suggests what to negotiate.</div>
                 <div>1 · Understand every cost &nbsp; 2 · Set who verifies it &nbsp; 3 · Approve invoices in a minute</div>
-                <div>PDF or text. Your files are only used for your account.</div>
+                <div>PDF, Word or text. Your files are only used for your account.</div>
               </div>
             </div>
           ) : (

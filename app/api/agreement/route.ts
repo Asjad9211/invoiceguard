@@ -54,7 +54,7 @@ Rules:
 export async function POST(req: Request) {
   try {
     const body = (await req.json()) as DocInput;
-    if (!body.text && !body.pdfBase64) return Response.json({ error: "No agreement provided" }, { status: 400 });
+    if (!body.text && !body.pdfBase64 && !body.docxBase64) return Response.json({ error: "No agreement provided" }, { status: 400 });
     const data = await askJSON<Agreement>(SYSTEM, INSTRUCTION, body);
     return Response.json(data);
   } catch (e) {

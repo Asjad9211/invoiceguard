@@ -211,7 +211,7 @@ export default function Home() {
           <div className="flex gap-1">
             {(Object.keys(SAMPLES) as SampleKey[]).map((k) => (
               <button key={k} disabled={!!busy} onClick={() => addAgreement({ text: SAMPLES[k].agreement }, k)} className="flex-1 rounded bg-cobalt px-1.5 py-1 text-[12px] font-medium text-white hover:bg-[#2148e0] disabled:opacity-50">
-                {k === "messaging" ? "Sample: SMS & email" : "Sample: KYC"}
+                {k === "messaging" ? "SMS sample" : "KYC sample"}
               </button>
             ))}
           </div>

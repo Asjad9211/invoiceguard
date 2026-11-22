@@ -7,7 +7,7 @@ const grotesk = Space_Grotesk({ variable: "--font-space-grotesk", subsets: ["lat
 const mono = JetBrains_Mono({ variable: "--font-jetbrains", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "InvoiceGuard — know what you should pay, before you pay it",
+  title: "InvoiceGuard: check every vendor bill before you pay it",
   description: "Understand every vendor agreement, assign who verifies each cost, and approve invoices with GST checks in a minute.",
 };
 export const viewport: Viewport = { width: "device-width", initialScale: 1 };

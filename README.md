@@ -1,28 +1,27 @@
 # InvoiceGuard
 
-**Know what you should pay — before you pay it.**
-Built at TPF Product (Un)Conference Builders Day, Bengaluru, 22 Nov 2026 · Request for Builders **#60 — Catch Vendor Overbilling Before You Pay**.
+**Every vendor bill, checked before you pay.**
+Built at TPF Product (Un)Conference Builders Day, Bengaluru, 22 Nov 2026 · Request for Builders **#60, Catch Vendor Overbilling Before You Pay**.
 
-## The problem
-Indian fintechs, NBFCs and AMCs pay usage-based vendors (SMS, WhatsApp, email, KYC APIs) every month. The agreement is signed once and never re-read. Nobody is sure whether billing is per message sent or delivered, or whether a KYC journey abandoned halfway is charged in full. When the invoice arrives, finance asks "is this right?" and no one owns the answer.
+## Problem
+Finance and operations teams in India pay usage-based vendors every month: KYC, SMS/WhatsApp/email, payment gateways, cloud, SaaS. The agreement is signed once and rarely re-read. Nobody is sure whether billing is per message sent or delivered, or whether an abandoned KYC journey is billed in full. When the invoice arrives, finance has the bill and another team has the usage, and the two are rarely compared.
 
-## What it does (one screen)
-1. **Understand** — upload the agreement. Claude extracts every cost item (unit, billing event, slab mode, minimums, clause) and asks short tap-questions where terms are unclear. Bundled prices (e.g. one price per onboarding) are split into the steps they cover, and volume-slab traps are flagged.
-2. **Source of truth** — each cost item gets an owner and the data they trust; the owner enters verified monthly usage.
-3. **Invoice** — upload the invoice. Claude maps lines to the agreement; **code** computes what you should pay. Approve, or Dispute with a drafted email citing clauses and evidence.
-4. **Negotiate** - what is worth asking the vendor to change, and a comparison against another quote you enter.
+## What works today
+1. **Understand the agreement** (PDF, Word, scans, photos): every charge, slab rule, billing event, minimums, one-time vs monthly fees, bundled steps, financial liabilities, a company-editable checklist, questions where terms are unclear, negotiation points, and a ready email to the vendor with points to clarify and changes to request. Each point can be marked Open, Discussed, Keep as it is, Ignore or Resolved. A final agreed version can replace the draft and keeps all settings.
+2. **Who checks what**: one owner per charge, source (report/file or API), where it is used, utilisation notes for licences and fixed fees with monthly history. Usage files (CSV/Excel): AI proposes a counting rule from the columns and all distinct values; code validates the columns and counts every row; the rule is shown with file name and date.
+3. **Invoice check**: lines mapped to the agreement and combined per charge; statuses Matches / Doesn't match / Waiting for usage / Not in agreement / Fixed fee OK; rate mismatch kept separate from unverified quantity; approval blocked until usage is confirmed; journey-wise breakup flag for bundled prices; slab table validation; credit notes; agreement-level minimum; duplicate check (number, or GSTIN + date + amount); GST checks (format, IGST vs CGST+SGST, tax arithmetic, GST on overbilled amount); payment and dispute deadlines from the agreement; issues list with statuses and a ready dispute email.
+4. **Dashboard and reminders**: all vendors, latest invoice, status, overbilled and recovered amounts, dispute outcomes remembered for next time; reminders for late invoices, payment due dates and closing dispute windows.
 
-## How AI is used
-- Claude: reads agreements and invoices (PDF or text) into structured JSON, writes clarifying questions, drafts verdict and dispute email.
-- Code: every number — slab maths (volume vs graduated), cliffs, expected amount, money at risk. Deterministic and auditable.
+AI reads documents and proposes rules. Every amount is calculated by code.
 
-## What's mocked
-- Accounts, sign-up and team invites are saved in the browser only (no server-side accounts yet). Invite emails are not sent.
-- Market comparison uses a quote the user enters; there is no benchmark database yet.
-- Coming soon: email inbox fetch, API integrations for usage, Tally export, approval routing.
+## What's not built yet (labelled in the app)
+- Accounts, sign-up, team and invites are stored in the browser only. No server database or login yet, so roles are not enforced on the server.
+- Invoices from email, live usage from vendor APIs, Tally/Zoho/SAP export, email/WhatsApp reminders.
+- GSTIN is format-checked only, not verified on the GST portal. GST rate checks support the tax team; they are not tax advice.
+- The comparison uses a quote the user enters; there is no benchmark database.
 
 ## Tools
-Claude (Claude Code + Claude API, `claude-sonnet-5-5`), Next.js, TypeScript, Tailwind, Vercel.
+Claude Code and the Claude API (Sonnet 5.5 for documents, Haiku 5.5 for short text), Next.js, TypeScript, Tailwind, Vercel. AI routes have a same-site check, size cap and per-IP rate limit.
 
 ## Run
 ```

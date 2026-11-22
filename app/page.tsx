@@ -78,11 +78,11 @@ export default function Landing() {
 
       {/* hero */}
       <section className="spot relative">
-        <div className="mx-auto max-w-6xl px-5 pb-6 pt-8 text-center md:pt-12">
-          <h1 className="fadeup font-serif text-[38px] leading-[1.02] tracking-tight md:text-[60px]">
+        <div className="mx-auto max-w-6xl px-5 pb-5 pt-6 text-center md:pt-8">
+          <h1 className="fadeup font-serif text-[32px] leading-[1.05] tracking-tight md:text-[46px]">
             Every vendor bill, <em className="text-gold">checked</em> before you pay.
           </h1>
-          <p className="mx-auto mt-4 max-w-2xl text-[16px] leading-relaxed lux-muted">
+          <p className="mx-auto mt-3 max-w-2xl text-[15px] leading-relaxed lux-muted">
             Upload the agreement once, then each invoice. See what you should have been charged, where the bill is off, and whether the GST is right.
           </p>
         </div>

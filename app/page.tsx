@@ -87,12 +87,12 @@ export default function Landing() {
           </p>
         </div>
         <div id="demo" className="mx-auto max-w-4xl px-5 pb-10">
-          <div className="overflow-hidden rounded-2xl border lux-line bg-white p-2 shadow-[0_30px_70px_-35px_rgba(14,26,70,.45)] md:p-3">
-            <video src="/demo.mp4" poster="/demo-poster.jpg" controls playsInline preload="metadata" className="block aspect-video w-full rounded-xl bg-[#f4efe6]" />
-          </div>
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+          <div className="mb-5 flex flex-wrap items-center justify-center gap-3">
             <a href="#try" className="rounded-full bg-gold px-7 py-3.5 text-[16px] font-medium text-white shadow-[0_10px_30px_-12px_rgba(36,72,216,.7)] hover:bg-[#1c3bb8]">Try the actual product →</a>
             <Link href="/app" className="rounded-full border border-[#17140f]/25 px-6 py-3.5 text-[15px] font-medium hover:border-[#17140f]">Upload your own agreement</Link>
+          </div>
+          <div className="overflow-hidden rounded-2xl border lux-line bg-white p-2 shadow-[0_30px_70px_-35px_rgba(14,26,70,.45)] md:p-3">
+            <video src="/demo.mp4" poster="/demo-poster.jpg" controls playsInline preload="metadata" className="block aspect-video w-full rounded-xl bg-[#f4efe6]" />
           </div>
           <p className="mt-3 text-center text-[13px] lux-muted">1-minute demo, sound on · No login · Free for your first 3 vendors</p>
         </div>

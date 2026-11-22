@@ -223,7 +223,7 @@ export default function Home() {
               {alerts.filter((a) => a.level !== "info").length > 0 && <span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-risk px-1 text-[10px] font-semibold text-white">{alerts.filter((a) => a.level !== "info").length}</span>}
             </button>
             {bellOpen && (
-              <div className="absolute right-0 z-40 mt-1 w-80 rounded-lg border border-line bg-white p-2 shadow-xl">
+              <div className="absolute right-0 z-40 mt-1 w-80 rounded-2xl border border-line bg-white p-2 shadow-xl">
                 <div className="px-1 pb-1 font-semibold">Reminders</div>
                 {alerts.length === 0 ? <div className="px-1 py-2 text-slate">Nothing due. We'll remind you when an invoice is late, a payment is due or a dispute window is closing.</div> : alerts.map((a, i) => (
                   <button key={i} onClick={() => { setActiveId(a.vendorId); setBellOpen(false); }} className="flex w-full gap-2 rounded-md px-1 py-1.5 text-left hover:bg-paper">
@@ -295,7 +295,7 @@ export default function Home() {
                     <input type="file" accept=".pdf,.docx,.txt,.png,.jpg,.jpeg,.webp" className="hidden" onChange={async (e) => { const f = e.target.files?.[0]; e.target.value = ""; if (!f) return; try { setStage(f.name); replaceAgreement(await fileToDoc(f)); } catch (x) { setErr(String(x)); } }} />
                   </label>
                 </div>
-                <div className="ml-auto flex overflow-hidden rounded-lg border border-line bg-white p-0.5">
+                <div className="ml-auto flex overflow-hidden rounded-2xl border border-line bg-white p-0.5">
                   {([
                     [1, `Understand${openQs ? ` · ${openQs} to answer` : " ✓"}`],
                     [2, `Who checks ${setupDone}/${items.length}`],
@@ -310,27 +310,38 @@ export default function Home() {
 
               <div className="min-h-0 flex-1 overflow-auto"><Safe key={v.id + step + (v.invoice?.invoiceNo || "")}>
                 {step === 1 && (
-                  <div className="space-y-2 p-3">
-                    <p className="text-zinc-700">{v.agreement.summary}</p>
+                  <div className="space-y-4 p-5">
+                    <div className="rounded-2xl border border-line bg-white p-5">
+                      <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-slate">In plain words</div>
+                      <p className="mt-1.5 max-w-4xl font-serif text-[21px] leading-snug text-ink">{v.agreement.summary}</p>
+                      <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-4">
+                        {[
+                          [String(items.length), "charges found"],
+                          [String((v.agreement.liabilities || []).filter((l) => l.severity === "high").length), "high liabilities"],
+                          [String(openQs), "questions to answer"],
+                          [String((v.agreement.checklist || []).filter((c) => c.status !== "found").length), "checklist gaps"],
+                        ].map(([n, l]) => (
+                          <div key={l} className="rounded-xl bg-paper px-3 py-2"><div className="font-serif text-[28px] leading-none">{n}</div><div className="mt-1 text-[12px] text-slate">{l}</div></div>
+                        ))}
+                      </div>
+                    </div>
                     {(v.agreement.risks?.length > 0 || notStated.length > 0) && (
-                      <div className="flex flex-wrap gap-1">
-                        {v.agreement.risks?.map((r, i) => <span key={i} className="rounded bg-orange-50 px-1.5 py-0.5 text-orange-800">⚠ {r}</span>)}
-                        {notStated.map((n, i) => <span key={"n" + i} className="rounded bg-red-50 px-1.5 py-0.5 text-red-800">Not stated: {n.item}</span>)}
+                      <div className="rounded-2xl border border-line bg-white">
+                        <div className="border-b border-line px-4 py-2.5 font-semibold">Watch out for</div>
+                        <ul className="grid gap-px bg-line md:grid-cols-2">
+                          {v.agreement.risks?.map((r, i) => <li key={i} className="flex gap-2.5 bg-white px-4 py-3 text-[13px]"><span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-coral" />{r}</li>)}
+                          {notStated.map((n, i) => <li key={"n" + i} className="flex gap-2.5 bg-white px-4 py-3 text-[13px]"><span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-sun" />You marked “{n.q}” as not stated for {n.item}.</li>)}
+                        </ul>
                       </div>
                     )}
-                    {v.agreement.suggestions && v.agreement.suggestions.length > 0 && (
-                      <div className="rounded border border-cobalt-100 bg-cobalt-50 p-2">
-                        <div className="mb-0.5 font-semibold text-cobalt">Get these clarified in writing</div>
-                        <ul className="list-disc space-y-0.5 pl-4 text-ink-2">{v.agreement.suggestions.map((x, i) => <li key={i}>{x}</li>)}</ul>
-                      </div>
-                    )}
-                    <table className="w-full border-collapse overflow-hidden rounded-lg bg-white ring-1 ring-line">
+                    <div className="px-1 pt-1 font-serif text-[22px]">Charges</div>
+                    <table className="w-full border-collapse overflow-hidden rounded-2xl bg-white ring-1 ring-line">
                       <thead className="text-left text-[11px] uppercase tracking-wide text-slate bg-paper">
                         <tr className="border-b border-zinc-200">
-                          <th className="px-2 py-1">Cost item</th>
-                          <th className="px-2 py-1">When you are charged</th>
-                          <th className="px-2 py-1">Rate</th>
-                          <th className="hidden px-2 py-1 lg:table-cell">Agreement clause</th>
+                          <th className="px-3 py-2">Cost item</th>
+                          <th className="px-3 py-2">When you are charged</th>
+                          <th className="px-3 py-2">Rate</th>
+                          <th className="hidden px-3 py-2 lg:table-cell">Agreement clause</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -338,12 +349,12 @@ export default function Home() {
                           const zones = cliffZones(c);
                           return (
                             <tr key={c.id} className="border-b border-zinc-100 align-top">
-                              <td className="px-2 py-1.5">
+                              <td className="px-3 py-3">
                                 <div className="font-medium">{c.name}</div>
                                 <div className="text-[11px] text-zinc-500">{c.category} · per {c.unit}{c.recurring === "one_time" ? " · one-time" : c.recurring === "on_request" ? " · only if used" : ""}</div>
                                 {c.includes && c.includes.length > 0 && <details className="mt-0.5 text-[12px] text-slate"><summary className="cursor-pointer text-cobalt">Includes {c.includes.length} steps</summary><ul className="list-disc pl-4">{c.includes.map((x) => <li key={x}>{x}</li>)}</ul></details>}
                               </td>
-                              <td className="px-2 py-1.5">
+                              <td className="px-3 py-3">
                                 <span className={`mr-1 rounded px-1 py-0.5 text-[11px] ${c.billingEvent === "unclear" ? "bg-red-100 text-red-800" : "bg-zinc-100 text-zinc-700"}`}>{EVENT_LABEL[c.billingEvent] || c.billingEvent}</span>
                                 <span className="text-zinc-700">{c.plainEnglish}</span>
                                 {c.questions.map((q) => (
@@ -359,7 +370,7 @@ export default function Home() {
                                   </div>
                                 ))}
                               </td>
-                              <td className="px-2 py-1.5">
+                              <td className="px-3 py-3">
                                 <div>{rateText(c)}</div>
                                 <div className="text-[11px] text-zinc-500">
                                   {c.pricing.mode === "volume" ? "Volume: one rate on all units" : c.pricing.mode === "graduated" ? "Graduated: rate per band" : ""}
@@ -373,7 +384,7 @@ export default function Home() {
                                   </div>
                                 ))}
                               </td>
-                              <td className="hidden max-w-xs px-2 py-1.5 text-[12px] text-zinc-500 lg:table-cell">{c.clause}</td>
+                              <td className="hidden max-w-xs px-3 py-3 text-[12px] text-zinc-500 lg:table-cell">{c.clause}</td>
                             </tr>
                           );
                         })}
@@ -384,7 +395,7 @@ export default function Home() {
                     <Negotiate list={v.agreement.negotiate} />
                     <AgreementEmail a={v.agreement} state={v.pointState || {}} company={org.name} setState={(k, val) => update((x) => ({ ...x, pointState: { ...(x.pointState || {}), [k]: val } }))} />
                     {showCompare ? <Compare items={items} onQuote={(id, rate) => updateItem(id, { quoteRate: rate })} /> : (
-                      <button onClick={() => setShowCompare(true)} className="rounded-lg border border-line bg-white px-3 py-2 font-medium hover:border-cobalt hover:text-cobalt">Compare with another vendor's quote</button>
+                      <button onClick={() => setShowCompare(true)} className="rounded-2xl border border-line bg-white px-3 py-2 font-medium hover:border-cobalt hover:text-cobalt">Compare with another vendor's quote</button>
                     )}
                     <div className="flex justify-end">
                       <button onClick={() => setStep(2)} className="rounded bg-ink px-3 py-1.5 font-medium text-white">Next: who verifies each cost →</button>
@@ -424,7 +435,7 @@ export default function Home() {
                         const cl = q !== undefined ? cliffInsight(c, q) : null;
                         const isFixed = c.pricing.mode === "fixed" || c.billingEvent === "per_month";
                         return (
-                          <div key={c.id} className="grid gap-3 rounded-lg border border-line bg-white p-3 md:grid-cols-12">
+                          <div key={c.id} className="grid gap-3 rounded-2xl border border-line bg-white p-3 md:grid-cols-12">
                             <div className="md:col-span-3">
                               <div className="font-medium">{c.name}</div>
                               <div className="text-[12px] text-slate">{EVENT_LABEL[c.billingEvent]} · {rateText(c)}</div>
@@ -515,7 +526,7 @@ export default function Home() {
                           {dupInvoice && <span className="rounded bg-risk-50 px-1.5 py-0.5 text-risk">Possible duplicate: same number, or same vendor, date and amount as an earlier invoice</span>}
                         </div>
                         {(v.disputes || []).filter((d) => d.invoiceNo !== v.invoice!.invoiceNo).length > 0 && (
-                          <div className="rounded-lg border border-line bg-white px-3 py-2 text-[13px]"><span className="font-medium">Past disputes with this vendor: </span>{(v.disputes || []).filter((d) => d.invoiceNo !== v.invoice!.invoiceNo).map((d) => `${d.invoiceNo} (${inr(d.amount)}, ${DISPUTE_LABEL[d.status]})`).join(" · ")}</div>
+                          <div className="rounded-2xl border border-line bg-white px-3 py-2 text-[13px]"><span className="font-medium">Past disputes with this vendor: </span>{(v.disputes || []).filter((d) => d.invoiceNo !== v.invoice!.invoiceNo).map((d) => `${d.invoiceNo} (${inr(d.amount)}, ${DISPUTE_LABEL[d.status]})`).join(" · ")}</div>
                         )}
                         <TermsStrip terms={v.agreement.keyTerms} invoiceDate={v.invoice.date} />
                         <div className="grid grid-cols-2 gap-2 md:grid-cols-5">
@@ -525,7 +536,7 @@ export default function Home() {
                           <Stat label="Not in agreement" value={inr(check.unmatched)} tone={check.unmatched > 0 ? "warn" : undefined} sub={check.unmatched > 0 ? "Review before paying" : undefined} />
                           <Stat label="Waiting for usage" value={`${check.pending} line${check.pending === 1 ? "" : "s"}`} tone={check.pending > 0 ? "warn" : undefined} />
                         </div>
-                        <div className="overflow-hidden rounded-lg border border-line bg-white">
+                        <div className="overflow-hidden rounded-2xl border border-line bg-white">
                           <table className="w-full border-collapse">
                             <thead className="bg-paper text-left text-[11px] uppercase tracking-wide text-slate">
                               <tr>
@@ -579,7 +590,7 @@ export default function Home() {
                           company={org.name}
                           past={(v.disputes || []).filter((d) => d.invoiceNo !== v.invoice!.invoiceNo)}
                         />
-                        <div className="flex flex-wrap items-center justify-end gap-2 rounded-lg border border-line bg-white p-3">
+                        <div className="flex flex-wrap items-center justify-end gap-2 rounded-2xl border border-line bg-white p-3">
                           {v.status === "approved" ? (
                             <span className="rounded-md bg-ok-50 px-3 py-2 font-semibold text-ok">Approved for payment</span>
                           ) : (
@@ -662,7 +673,7 @@ function Compare({ items, onQuote }: { items: CostItem[]; onQuote: (id: string, 
   const rows = items.filter((c) => c.pricing.mode !== "fixed" && c.pricing.slabs?.length && c.recurring !== "one_time");
   if (!rows.length) return null;
   return (
-    <div className="rounded-lg border border-line bg-white p-3">
+    <div className="rounded-2xl border border-line bg-white p-3">
       <div className="font-semibold">Compare with another quote</div>
       <div className="mb-2 text-[13px] text-slate">Enter a rate another vendor has quoted you. We'll show the monthly difference using your confirmed usage.</div>
       <div className="space-y-1.5">
@@ -762,7 +773,7 @@ function TeamPanel({ org, setOrg, onClose }: { org: Org; setOrg: (o: Org) => voi
 function Negotiate({ list }: { list?: { type: string; item: string; ask: string; why: string }[] }) {
   if (!list?.length) return null;
   return (
-    <div className="rounded-lg border border-line bg-white">
+    <div className="rounded-2xl border border-line bg-white">
       <div className="border-b border-line px-3 py-2 font-semibold">What you can negotiate</div>
       <div className="grid gap-px bg-line md:grid-cols-2">
         {list.map((n, i) => (
@@ -819,7 +830,7 @@ function Liabilities({ list }: { list?: Agreement["liabilities"] }) {
   if (!list?.length) return null;
   const c = { high: "bg-risk-50 text-risk", medium: "bg-amber-50 text-amber", low: "bg-paper text-slate" } as const;
   return (
-    <div className="rounded-lg border border-line bg-white">
+    <div className="rounded-2xl border border-line bg-white">
       <div className="border-b border-line px-3 py-2 font-semibold">Financial liabilities in this agreement</div>
       <ul className="divide-y divide-line">
         {list.map((l, i) => (
@@ -838,7 +849,7 @@ function Checklist({ result, list, save }: { result?: Agreement["checklist"]; li
   const [draft, setDraft] = useState(list.join("\n"));
   const mark = { found: ["✓", "text-ok"], missing: ["✕", "text-risk"], unclear: ["?", "text-amber"] } as const;
   return (
-    <div className="rounded-lg border border-line bg-white">
+    <div className="rounded-2xl border border-line bg-white">
       <div className="flex items-center border-b border-line px-3 py-2">
         <span className="font-semibold">Your agreement checklist</span>
         <button onClick={() => { setDraft(list.join("\n")); setEdit(!edit); }} className="ml-auto text-[13px] font-medium text-cobalt">{edit ? "Cancel" : "Edit checklist"}</button>
@@ -890,7 +901,7 @@ function Dashboard({ vendors, open, setDispute, remove }: { vendors: Vendor[]; o
         <Stat label="Overbilled found" value={inr(round(over))} tone={over > 0 ? "bad" : undefined} />
         <Stat label="Recovered" value={inr(round(recovered))} tone={recovered > 0 ? "good" : undefined} sub={openDisputes.length ? `${openDisputes.length} dispute${openDisputes.length > 1 ? "s" : ""} open` : undefined} />
       </div>
-      <div className="overflow-x-auto rounded-lg border border-line bg-white">
+      <div className="overflow-x-auto rounded-2xl border border-line bg-white">
         <table className="w-full text-left">
           <thead className="bg-paper text-[11px] uppercase tracking-wide text-slate"><tr><th className="px-3 py-2">Vendor</th><th className="px-3 py-2">Latest invoice</th><th className="px-3 py-2 text-right">Amount</th><th className="px-3 py-2">Status</th><th className="px-3 py-2">Dispute</th><th className="px-3 py-2"></th></tr></thead>
           <tbody>

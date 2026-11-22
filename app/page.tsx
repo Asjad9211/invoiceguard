@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Logo, LogoMark } from "@/components/Logo";
+import Examples from "@/components/Examples";
 
 const I = {
   doc: "M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M9 13h6M9 17h4",
@@ -19,7 +20,7 @@ function Icon({ d, className = "h-5 w-5" }: { d: string; className?: string }) {
 
 const STEPS = [
   { n: "01", t: "Read the agreement", d: "Upload a vendor agreement, order form or rate card: PDF, Word, a scan or a photo. We list every charge, every financial liability, and run your own checklist on it. If something is vague, like whether drop-offs are billed, we ask you.", icon: I.doc },
-  { n: "02", t: "Decide who checks what", d: "For each charge, pick one person and the data they trust: a report, a usage file or an API log. Upload a usage export and Claude works out which rows are billable. For licences, note whether they're fully used, so patterns show up over time.", icon: I.user },
+  { n: "02", t: "Decide who checks what", d: "For each charge, pick one person and the data they trust: a report, a usage file or an API log. Upload a usage export and InvoiceGuard works out which rows are billable. For licences, note whether they're fully used, so patterns show up over time.", icon: I.user },
   { n: "03", t: "Check the invoice", d: "Upload the invoice. Picking it up from your email is coming soon. We work out what you should pay, check the GST, show payment and dispute deadlines, and draft the dispute. We remember how each dispute ended.", icon: I.receipt },
   { n: "04", t: "Know what to negotiate", d: "We point out what is worth asking the vendor to change: fixed fees, slab rules, minimum commitments, how failed calls are billed and rate locks.", icon: I.tag },
 ];
@@ -94,35 +95,7 @@ export default function Landing() {
           </div>
 
           <div className="md:col-span-6">
-            <div className="rounded-xl border border-line bg-white shadow-[0_24px_60px_-30px_rgba(11,18,32,.35)]">
-              <div className="flex items-center gap-2 border-b border-line px-4 py-2.5 text-sm">
-                <span className="font-medium">KYC vendor agreement</span>
-                <span className="ml-auto rounded bg-cobalt-50 px-2 py-0.5 font-mono text-[11px] text-cobalt">READ BY INVOICEGUARD</span>
-              </div>
-              <div className="px-4 py-3">
-                <div className="font-mono text-[10px] uppercase tracking-wider text-slate">Charge found</div>
-                <div className="mt-0.5 font-medium">Price per onboarding</div>
-                <div className="text-[13px] text-slate">One price covers 15 steps: PAN OCR, Aadhaar OCR, video, face match and more</div>
-              </div>
-              <div className="border-t border-line bg-cobalt-50/60 px-4 py-3">
-                <div className="text-[13px] font-medium">The agreement doesn't say:</div>
-                <div className="mt-2 flex flex-wrap gap-1.5 text-[12px]">
-                  {["Billed when started or completed?", "Drop-offs billed in full?", "Retries counted again?"].map((q) => <span key={q} className="rounded-md border border-cobalt-100 bg-white px-2 py-1">{q}</span>)}
-                </div>
-              </div>
-              <ul className="divide-y divide-line border-t border-line text-sm">
-                {[
-                  ["Invoice check", "Onboardings billed vs onboardings your team confirms"],
-                  ["GST check", "Same state, so CGST + SGST expected"],
-                  ["Worth negotiating", "Pay per step for journeys that drop off midway"],
-                ].map(([a, b]) => (
-                  <li key={a} className="flex items-start gap-3 px-4 py-2.5">
-                    <svg viewBox="0 0 24 24" className="mt-0.5 h-4 w-4 shrink-0 text-cobalt" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 12l2 2 4-4M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z" /></svg>
-                    <div><div className="font-medium">{a}</div><div className="text-[12px] text-slate">{b}</div></div>
-                  </li>
-                ))}
-              </ul>
-            </div>
+            <Examples />
           </div>
         </div>
       </section>
@@ -160,7 +133,7 @@ export default function Landing() {
           <div className="mt-6 grid gap-4 rounded-xl bg-ink p-6 text-white md:grid-cols-3">
             <div className="font-display text-xl font-semibold">How the numbers are worked out</div>
             <p className="text-sm leading-relaxed text-white/75 md:col-span-2">
-              We use Claude, an AI model, to read agreements and invoices. The amounts themselves, like slab maths, what you should pay and GST, are calculated by plain code. Every number links back to a clause or a usage figure, so you can check it yourself.
+              InvoiceGuard reads your agreements and invoices. The amounts themselves, like slab maths, what you should pay and GST, are calculated by plain code. Every number links back to a clause or a usage figure, so you can check it yourself.
             </p>
           </div>
         </div>
@@ -169,7 +142,7 @@ export default function Landing() {
       <section id="use-cases" className="border-b border-line">
         <div className="mx-auto max-w-6xl px-4 py-16">
           <SectionHead k="Works with any agreement" t="If a vendor bills you against an agreement, InvoiceGuard can read it." />
-          <p className="mt-3 max-w-2xl text-[15px] text-slate">Upload a PDF, a Word file, a scan or a photo. Claude reads the pricing and terms the same way, whatever the vendor or format. A few common ones:</p>
+          <p className="mt-3 max-w-2xl text-[15px] text-slate">Upload a PDF, a Word file, a scan or a photo. InvoiceGuard reads the pricing and terms the same way, whatever the vendor or format. A few common ones:</p>
           <div className="mt-8 grid gap-px overflow-hidden rounded-xl border border-line bg-line sm:grid-cols-2 lg:grid-cols-5">
             {CASES.map(([t, d]) => (
               <div key={t} className="bg-white p-5">

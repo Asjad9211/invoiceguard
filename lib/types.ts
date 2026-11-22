@@ -95,6 +95,7 @@ export interface Vendor {
   status: "setup" | "ready" | "approved" | "disputed";
   history?: { invoiceNo: string; date: string; total: number; status: string }[];
   verdict?: { verdict: string; reasons: string[]; email: { subject: string; body: string } };
+  issueState?: Record<string, "resolved" | "ignored">;
   disputes?: { invoiceNo: string; date: string; amount: number; status: "open" | "credit_note" | "corrected" | "rejected" | "paid_anyway"; note?: string }[];
   disputeEmail?: string;
 }

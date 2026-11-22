@@ -117,7 +117,7 @@ export default function Home() {
     if (rows.length < 2) { setErr("That file has no rows."); return; }
     const [headers, ...data] = rows;
     setErr(null);
-    setBusy("Claude is reading your usage file and working out how to count each charge…");
+    setBusy("Reading your usage file and working out how to count each charge…");
     try {
       const res = await post<{ rules: UsageRule[]; notes: string[] }>("/api/usage", {
         headers, sample: data.slice(0, 25), rowCount: data.length,
@@ -209,7 +209,7 @@ export default function Home() {
   return (
     <div className="flex h-dvh flex-col bg-paper text-[14px] text-ink">
       {/* top bar */}
-      <header className="flex h-12 shrink-0 items-center gap-3 border-b border-line bg-white px-3">
+      <header className="flex h-14 shrink-0 items-center gap-3 border-b border-line bg-white px-4">
         <Link href="/" aria-label="Home"><Logo /></Link>
         
         <div className="ml-auto flex items-center gap-2">
@@ -244,28 +244,32 @@ export default function Home() {
 
       <div className="flex min-h-0 flex-1 flex-col md:flex-row">
         {/* vendor rail */}
-        <aside className="flex shrink-0 flex-col gap-1 border-b border-zinc-200 bg-white p-2 md:w-60 md:border-b-0 md:border-r">
-          <div className="px-1 pt-1 text-[11px] font-medium uppercase tracking-wide text-slate">Your vendors</div>
-          <label className="cursor-pointer rounded border border-dashed border-zinc-300 px-2 py-1.5 text-center hover:bg-paper">
-            + Add vendor: upload agreement
+        <aside className="flex shrink-0 flex-col gap-1 bg-ink p-3 text-white md:w-64">
+          <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg bg-cobalt px-3 py-2.5 font-medium text-white hover:bg-[#2148e0]">
+            <span className="text-lg leading-none">+</span> Add vendor
             <input type="file" accept=".pdf,.docx,.txt,.png,.jpg,.jpeg,.webp" className="hidden" onChange={async (e) => { const f = e.target.files?.[0]; e.target.value = ""; if (!f) return; try { setStage(f.name); addAgreement(await fileToDoc(f)); } catch (x) { setErr(String(x)); } }} />
           </label>
-          <button onClick={() => setActiveId(null)} className={`rounded px-2 py-1.5 text-left font-medium ${activeId === null ? "bg-ink text-white" : "hover:bg-paper"}`}>Dashboard</button>
-          <div className="mt-1 flex gap-1 overflow-x-auto md:flex-col md:overflow-visible">
+          <div className="px-1 pb-1 text-center text-[11px] text-white/50">Agreement as PDF, Word, scan or photo</div>
+          <button onClick={() => setActiveId(null)} className={`mt-2 flex items-center gap-2 rounded-lg px-2.5 py-2 text-left font-medium ${activeId === null ? "bg-white/10" : "text-white/70 hover:bg-white/5 hover:text-white"}`}>
+            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z" /></svg> Dashboard
+          </button>
+          <div className="mt-3 px-2.5 text-[11px] font-medium uppercase tracking-wider text-white/40">Vendors · {vendors.length}</div>
+          <div className="flex gap-1 overflow-x-auto md:flex-col md:overflow-visible">
             {vendors.map((x) => {
-              const r = x.invoice ? checkInvoice(x.invoice, x.agreement.costItems).atRisk : 0;
+              const ch = x.invoice ? checkInvoice(x.invoice, x.agreement.costItems) : null;
+              const dot = x.status === "approved" ? "bg-ok" : x.status === "disputed" || (ch && ch.atRisk > 0) ? "bg-risk" : ch && ch.pending ? "bg-amber" : "bg-white/30";
+              const sub = x.status === "approved" ? "Approved" : x.status === "disputed" ? "Disputed" : ch && ch.atRisk > 0 ? `${inr(ch.atRisk)} overbilled` : ch && ch.pending ? "Waiting for usage" : x.invoice ? "To review" : `${x.agreement.costItems.length} charges · no invoice`;
               return (
-                <button key={x.id} onClick={() => { setActiveId(x.id); setVerdict(null); }} className={`shrink-0 rounded px-2 py-1.5 text-left ${x.id === activeId ? "bg-ink text-white" : "hover:bg-zinc-100"}`}>
-                  <div className="truncate font-medium">{x.agreement.vendor}</div>
-                  <div className={`text-[11px] ${x.id === activeId ? "text-zinc-300" : "text-zinc-500"}`}>
-                    {x.status === "approved" ? "✓ Approved" : x.status === "disputed" ? "Disputed" : r > 0 ? `${inr(r)} at risk` : `${x.agreement.costItems.length} cost items`}
-                  </div>
+                <button key={x.id} onClick={() => { setActiveId(x.id); setVerdict(null); }} className={`flex shrink-0 items-start gap-2 rounded-lg px-2.5 py-2 text-left ${x.id === activeId ? "bg-white/10" : "hover:bg-white/5"}`}>
+                  <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${dot}`} />
+                  <span className="min-w-0"><span className="block truncate font-medium">{x.agreement.vendor}</span><span className="block text-[12px] text-white/55">{sub}</span></span>
                 </button>
               );
             })}
           </div>
-          <div className="mt-auto hidden space-y-0.5 text-[11px] text-zinc-400 md:block">
-            <div>Coming soon: invoices from email, usage from vendor APIs, Tally export</div>
+          <div className="mt-auto hidden rounded-lg border border-white/10 p-2.5 text-[12px] text-white/55 md:block">
+            <div className="mb-1 font-medium text-white/80">Coming soon</div>
+            Invoices picked up from your email · usage from vendor APIs · Tally export
           </div>
         </aside>
 
@@ -382,7 +386,7 @@ export default function Home() {
                     <div className="flex flex-wrap items-center gap-2">
                       <div>
                         <div className="font-display text-[17px] font-semibold">Who checks what</div>
-                        <p className="text-slate">One owner per charge, and the data they trust. Upload a usage export and Claude works out how to count it.</p>
+                        <p className="text-slate">One owner per charge, and the data they trust. Upload a usage export and we work out how to count it.</p>
                       </div>
                       <div className="ml-auto flex flex-wrap gap-2">
                         <label className="cursor-pointer rounded-md bg-cobalt px-3 py-2 font-medium text-white hover:bg-[#2148e0]">
@@ -410,7 +414,11 @@ export default function Home() {
                             </div>
                             <div className="md:col-span-3">
                               <label className="text-[11px] font-medium uppercase tracking-wide text-slate">Owner</label>
-                              <input list="members" value={c.owner || ""} onChange={(e) => updateItem(c.id, { owner: e.target.value })} placeholder="Pick a team member" className="mt-0.5 w-full rounded-md border border-line px-2 py-1.5" />
+                              <select value={c.owner || ""} onChange={(e) => { if (e.target.value === "__invite") { setTeamOpen(true); return; } updateItem(c.id, { owner: e.target.value }); }} className="mt-0.5 w-full rounded-md border border-line bg-white px-2 py-1.5">
+                                <option value="">Choose owner…</option>
+                                {org.members.filter((m) => m.role !== "Viewer").map((m) => <option key={m.id} value={m.name}>{m.name}{m.id === "u1" ? " (you)" : ""}</option>)}
+                                <option value="__invite">+ Invite a teammate…</option>
+                              </select>
                               <div className="mt-2 flex rounded-md bg-paper p-0.5 text-[13px]">
                                 <button onClick={() => updateItem(c.id, { sourceOfTruth: "manual" })} className={`flex-1 rounded px-2 py-1 ${c.sourceOfTruth !== "api" ? "bg-white font-medium shadow-sm" : "text-slate"}`}>Report / file</button>
                                 <button onClick={() => updateItem(c.id, { sourceOfTruth: "api" })} className={`flex-1 rounded px-2 py-1 ${c.sourceOfTruth === "api" ? "bg-white font-medium shadow-sm" : "text-slate"}`}>API</button>
@@ -523,7 +531,14 @@ export default function Home() {
                                     </td>
                                     <td className="px-3 py-2"><StatusPill s={l.status} /></td>
                                     <td className="tnum px-3 py-2 text-right">{fmtN(l.invoicedQty)}</td>
-                                    <td className="tnum px-3 py-2 text-right">{l.actualQty !== null ? fmtN(l.actualQty) : "-"}</td>
+                                    <td className="tnum px-3 py-2 text-right">
+                                      {item && item.pricing.mode !== "fixed" && item.billingEvent !== "per_month" ? (
+                                        <div className="flex flex-col items-end gap-1">
+                                          <input type="number" value={item.actualQty ?? ""} onChange={(e) => updateItem(item.id, { actualQty: e.target.value === "" ? undefined : Number(e.target.value) })} placeholder="Enter" className="w-24 rounded-md border border-line px-2 py-1 text-right" />
+                                          {item.actualQty === undefined && <button onClick={() => updateItem(item.id, { actualQty: l.invoicedQty, sourceNote: item.sourceNote || "Confirmed same as invoice" })} className="text-[11px] font-medium text-cobalt">Same as billed</button>}
+                                        </div>
+                                      ) : l.actualQty !== null ? fmtN(l.actualQty) : "-"}
+                                    </td>
                                     <td className="tnum px-3 py-2 text-right">{inr(l.invoicedAmount)}</td>
                                     <td className="tnum px-3 py-2 text-right">{l.expectedAmount !== null ? inr(l.expectedAmount) : "-"}</td>
                                     <td className={`tnum px-3 py-2 text-right font-semibold ${l.status === "discrepancy" && (l.diff ?? 0) > 0 ? "text-risk" : "text-slate"}`}>{l.diff !== null && l.diff !== 0 ? (l.diff > 0 ? "+" : "") + inr(l.diff) : "-"}</td>
@@ -534,16 +549,25 @@ export default function Home() {
                           </table>
                         </div>
                         <GstPanel inv={v.invoice} buyer={org.gstin} overbilled={check.atRisk} />
+                        <Issues
+                          issues={buildIssues(check.lines, gst?.findings || [], dupInvoice)}
+                          state={v.issueState || {}}
+                          setState={(k, val) => update((x) => { const st = { ...(x.issueState || {}) }; if (val) st[k] = val; else delete st[k]; return { ...x, issueState: st }; })}
+                          vendor={v.agreement.vendor}
+                          invoice={v.invoice}
+                          company={org.name}
+                          past={(v.disputes || []).filter((d) => d.invoiceNo !== v.invoice!.invoiceNo)}
+                        />
                         <div className="flex flex-wrap items-center justify-end gap-2 rounded-lg border border-line bg-white p-3">
                           {v.status === "approved" ? (
                             <span className="rounded-md bg-ok-50 px-3 py-2 font-semibold text-ok">Approved for payment</span>
                           ) : (
                             <>
                               <span className="mr-auto text-slate">
-                                {check.atRisk > 0 ? "Some charges don't match the agreement or your usage." : check.pending > 0 ? "Rates match. Confirm usage before approving." : check.unmatched > 0 ? "Some charges aren't in the agreement. Check if they were approved separately." : "Everything matches the agreement and your usage."}
+                                {check.atRisk > 0 ? "Some charges don't match the agreement or your usage." : check.pending > 0 ? "Rates match. Enter the confirmed usage in the table above to approve." : check.unmatched > 0 ? "Some charges aren't in the agreement. Check if they were approved separately." : "Everything matches the agreement and your usage."}
                               </span>
-                              {check.pending > 0 && <button onClick={() => setStep(2)} className="rounded-md border border-line px-3 py-2 font-medium hover:border-ink/40">Confirm usage</button>}
-                              {(check.atRisk > 0 || check.unmatched > 0) && <button onClick={runDispute} disabled={!!busy} className="rounded-md bg-risk px-3 py-2 font-semibold text-white disabled:opacity-50">Draft dispute email</button>}
+                              
+                              {(check.atRisk > 0 || check.unmatched > 0) && <button onClick={() => update((x) => ({ ...x, status: "disputed", disputes: [...(x.disputes || []).filter((d) => d.invoiceNo !== (x.invoice?.invoiceNo || "")), { invoiceNo: x.invoice?.invoiceNo || "", date: x.invoice?.date || "", amount: check.atRisk + check.unmatched, status: "open" }] }))} className="rounded-md bg-risk px-3 py-2 font-semibold text-white">Mark as disputed</button>}
                               <button disabled={check.pending > 0} onClick={() => update((x) => ({ ...x, status: "approved" }))} className={`rounded-md px-3 py-2 font-semibold ${check.atRisk > 0 || check.unmatched > 0 ? "border border-line" : "bg-cobalt text-white"} disabled:opacity-40`}>
                                 Approve {inr(check.atRisk > 0 ? check.expectedSubtotal : v.invoice.subtotal)} + GST
                               </button>
@@ -779,7 +803,7 @@ function Reading({ label, file }: { label: string; file: string }) {
           ))}
         </ol>
         <div className="mt-4 h-1 overflow-hidden rounded bg-paper"><div className="h-full w-1/3 animate-[slide_1.2s_ease-in-out_infinite] rounded bg-cobalt" /></div>
-        <div className="mt-3 text-[12px] text-slate">Long agreements can take up to 2 minutes. Claude reads every page, including tables and annexures.</div>
+        <div className="mt-3 text-[12px] text-slate">Long agreements can take up to 2 minutes. We read every page, including tables and annexures.</div>
       </div>
     </div>
   );
@@ -839,7 +863,7 @@ function Dashboard({ vendors, open, setDispute, remove }: { vendors: Vendor[]; o
     <div className="grid flex-1 place-items-center p-6 text-center">
       <div className="max-w-md space-y-2 text-slate">
         <div className="font-display text-xl font-semibold text-ink">Add your first vendor</div>
-        <div>Upload a vendor agreement, order form or rate card: PDF, Word, a scan or a photo. Claude reads it, lists every charge and liability, and runs your checklist.</div>
+        <div>Upload a vendor agreement, order form or rate card: PDF, Word, a scan or a photo. We read it, list every charge and liability, and run your checklist.</div>
       </div>
     </div>
   );
@@ -889,6 +913,71 @@ function Dashboard({ vendors, open, setDispute, remove }: { vendors: Vendor[]; o
         </table>
       </div>
       <div className="text-[12px] text-slate">Dispute outcomes are remembered. The next dispute email for that vendor mentions what happened last time.</div>
+    </div>
+  );
+}
+
+type Issue = { key: string; title: string; detail: string; amount?: number };
+function buildIssues(lines: ReturnType<typeof checkInvoice>["lines"], gst: { level: string; title: string; detail: string }[], dup: boolean): Issue[] {
+  const out: Issue[] = [];
+  for (const l of lines) {
+    if (l.status === "discrepancy") out.push({ key: "d:" + l.description, title: `${l.description}: overbilled by ${inr(l.diff ?? 0)}`, detail: l.flags.join(" "), amount: l.diff ?? 0 });
+    if (l.status === "unmatched") out.push({ key: "u:" + l.description, title: `${l.description}: ${inr(l.invoicedAmount)} not in the agreement`, detail: "Please share the written approval for this charge, or remove it.", amount: l.invoicedAmount });
+    for (const f of l.flags) if (f.startsWith("One price covers")) out.push({ key: "b:" + l.description, title: `${l.description}: no journey-wise breakup`, detail: "Please share a report of journeys started, completed and dropped for this billing period, so we can match the billed count." });
+  }
+  for (const g of gst) if (g.level !== "ok") out.push({ key: "g:" + g.title, title: `GST: ${g.title}`, detail: g.detail });
+  if (dup) out.push({ key: "dup", title: "This invoice number was already received", detail: "Please confirm this is not a duplicate." });
+  return out;
+}
+
+function Issues({ issues, state, setState, vendor, invoice, company, past }: { issues: Issue[]; state: Record<string, "resolved" | "ignored">; setState: (k: string, v: "resolved" | "ignored" | null) => void; vendor: string; invoice: Invoice; company: string; past: NonNullable<Vendor["disputes"]> }) {
+  const [copied, setCopied] = useState(false);
+  if (!issues.length) return null;
+  const open = issues.filter((i) => !state[i.key]);
+  const total = open.reduce((s, i) => s + Math.max(0, i.amount || 0), 0);
+  const subject = `Invoice ${invoice.invoiceNo}${invoice.date ? " dated " + invoice.date : ""}: ${open.length} point${open.length === 1 ? "" : "s"} to clarify`;
+  const body = `Dear ${vendor} team,
+
+We have reviewed invoice ${invoice.invoiceNo}${invoice.date ? " dated " + invoice.date : ""} against our agreement and usage records. Before we process payment, please help us with the following:
+
+${open.map((i, n) => `${n + 1}. ${i.title}\n   ${i.detail}`).join("\n\n")}
+${total > 0 ? `\nThe amount in question is ${inr(round(total))} before GST. Please share a corrected invoice or a credit note.\n` : ""}${past.length ? `\nFor reference, we raised similar points on invoice ${past[past.length - 1].invoiceNo} earlier.\n` : ""}
+Regards,
+Accounts Payable
+${company}`;
+  return (
+    <div className="grid gap-3 lg:grid-cols-2">
+      <div className="rounded-lg border border-line bg-white">
+        <div className="flex items-center border-b border-line px-3 py-2"><span className="font-semibold">Issues found</span><span className="ml-2 rounded-full bg-paper px-2 text-[12px] text-slate">{open.length} open of {issues.length}</span></div>
+        <ul className="divide-y divide-line">
+          {issues.map((i) => {
+            const st = state[i.key];
+            return (
+              <li key={i.key} className={`flex gap-2 px-3 py-2 ${st ? "opacity-50" : ""}`}>
+                <div className="min-w-0 flex-1"><div className={`font-medium ${st ? "line-through" : ""}`}>{i.title}</div><div className="text-[12px] text-slate">{i.detail}</div></div>
+                {st ? (
+                  <button onClick={() => setState(i.key, null)} className="h-fit whitespace-nowrap rounded-md border border-line px-2 py-1 text-[12px]">{st === "resolved" ? "Resolved" : "Ignored"} · Undo</button>
+                ) : (
+                  <div className="flex h-fit gap-1">
+                    <button onClick={() => setState(i.key, "resolved")} className="whitespace-nowrap rounded-md border border-line px-2 py-1 text-[12px] hover:border-ok hover:text-ok">Resolved</button>
+                    <button onClick={() => setState(i.key, "ignored")} className="whitespace-nowrap rounded-md border border-line px-2 py-1 text-[12px] hover:border-ink/40">Ignore</button>
+                  </div>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+      {open.length > 0 && (
+        <div className="rounded-lg border border-line bg-white p-3">
+          <div className="mb-1 flex items-center gap-2 font-semibold">Email to {vendor}
+            <button onClick={() => { navigator.clipboard?.writeText(`Subject: ${subject}\n\n${body}`); setCopied(true); setTimeout(() => setCopied(false), 1500); }} className="ml-auto rounded-md border border-line px-2 py-1 text-[12px] font-normal">{copied ? "Copied" : "Copy"}</button>
+            <a href={`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`} className="rounded-md bg-ink px-2 py-1 text-[12px] font-medium text-white">Open in email</a>
+          </div>
+          <div className="text-[13px] font-medium">Subject: {subject}</div>
+          <pre className="mt-1 max-h-72 overflow-auto whitespace-pre-wrap font-sans text-[13px] text-ink-2">{body}</pre>
+        </div>
+      )}
     </div>
   );
 }

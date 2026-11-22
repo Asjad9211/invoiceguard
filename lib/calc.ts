@@ -116,5 +116,6 @@ export function fmtN(n: number) {
   return n.toLocaleString("en-IN", { maximumFractionDigits: 2 });
 }
 export function inr(n: number) {
-  return "₹" + n.toLocaleString("en-IN", { maximumFractionDigits: Math.abs(n) < 1 ? 3 : 2 });
+  const d = Math.abs(n) < 1 ? 3 : 2;
+  return "₹" + n.toLocaleString("en-IN", { maximumFractionDigits: d, minimumFractionDigits: Number.isInteger(n) ? 0 : Math.min(2, d) });
 }

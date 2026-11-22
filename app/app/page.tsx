@@ -127,6 +127,7 @@ export default function Home() {
   }
 
   const check = useMemo(() => (v?.invoice ? checkInvoice(v.invoice, v.agreement.costItems) : null), [v]);
+  const missingUsage = check ? check.lines.filter((l) => l.costItemId && l.actualQty === null).length : 0;
   const gst = useMemo(() => (v?.invoice && check ? gstCheck(v.invoice, org.gstin, check.expectedSubtotal) : null), [v, check, org.gstin]);
 
   async function runDispute() {
@@ -225,7 +226,7 @@ export default function Home() {
                   {([
                     [1, `Understand${openQs ? ` · ${openQs} to answer` : " ✓"}`],
                     [2, `Who checks ${setupDone}/${items.length}`],
-                    [3, v.invoice ? (check && check.atRisk > 0 ? `Invoice · ${inr(check.atRisk)} at risk` : "Invoice ✓") : "Invoice"],
+                    [3, v.invoice ? (check && check.atRisk > 0 ? `Invoice · ${inr(check.atRisk)} at risk` : missingUsage ? "Invoice · usage needed" : "Invoice ✓") : "Invoice"],
                   ] as [Step, string][]).map(([s, label]) => (
                     <button key={s} onClick={() => setStep(s)} className={`rounded-md px-3 py-1.5 font-medium ${step === s ? "bg-ink text-white" : "text-slate hover:bg-paper hover:text-ink"}`}>
                       {s} {label}
@@ -385,6 +386,11 @@ export default function Home() {
                           <div className="ml-auto flex items-center gap-2">
                             {v.status === "approved" ? (
                               <span className="rounded bg-ok-50 px-3 py-2 font-semibold text-cobalt">✓ Approved for payment</span>
+                            ) : missingUsage > 0 && check.atRisk === 0 ? (
+                              <div className="flex items-center gap-2">
+                                <span className="max-w-xs text-right text-[13px] text-amber">Rates match the agreement. {missingUsage} line{missingUsage > 1 ? "s" : ""} still need usage confirmed by the owner before you can be sure of the quantity.</span>
+                                <button onClick={() => setStep(2)} className="rounded-md bg-ink px-3 py-2 font-semibold text-white">Confirm usage</button>
+                              </div>
                             ) : check.atRisk > 0 ? (
                               <>
                                 <button onClick={runDispute} disabled={!!busy} className="rounded bg-red-600 px-3 py-2 font-semibold text-white hover:bg-red-700 disabled:opacity-50">Dispute {inr(check.atRisk)}</button>

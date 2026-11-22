@@ -158,7 +158,7 @@ export default function Landing() {
             <Head k="GST" t="GST checked on" em="every invoice." />
             <p className="mt-5 text-[15px] leading-relaxed lux-muted">Even when the amount is right, the wrong tax type or a missing GSTIN can cost you input tax credit. We flag it and tell you what to ask the vendor to fix. These are checks to help your tax team, not a filing tool.</p>
           </div>
-          <ul className="divide-y lux-line rounded-3xl border lux-line">
+          <ul className="divide-y divide-[#17140f]/10 rounded-3xl border lux-line bg-[#fffdf9]">
             {GST.map(([t, d]) => (
               <li key={t} className="flex gap-4 px-6 py-5">
                 <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-gold" />

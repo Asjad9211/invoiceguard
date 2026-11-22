@@ -27,7 +27,7 @@
   --font-sans: var(--font-inter), ui-sans-serif, system-ui;
   --font-mono: var(--font-jetbrains), ui-monospace, monospace;
   --font-serif: var(--font-serif), ui-serif, Georgia, serif;
-  --color-gold: #d9482b;
+  --color-gold: #2448d8;
   --color-ivory: #f4efe6;
 }
 
@@ -85,4 +85,4 @@ label {
 .lux-card { background: #fffdf9; border: 1px solid rgba(23,20,15,.09); }
 .lux-line { border-color: rgba(23,20,15,.1); }
 .lux-muted { color: rgba(23,20,15,.6); }
-.spot { background: radial-gradient(45% 55% at 50% 0%, rgba(228,87,46,.12) 0%, transparent 70%); }
+.spot { background: radial-gradient(45% 55% at 50% 0%, rgba(47,91,255,.13) 0%, transparent 70%); }

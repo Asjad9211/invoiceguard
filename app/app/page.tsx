@@ -53,7 +53,6 @@ export default function Home() {
   const [step, setStep] = useState<Step>(1);
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
-  const setVerdict = (_: null) => {};
   const [usageNotes, setUsageNotes] = useState<string[]>([]);
   const [stage, setStage] = useState("");
   const [checklist, setChecklist] = useState<string[]>(DEFAULT_CHECKLIST);
@@ -103,7 +102,6 @@ export default function Home() {
       setVendors((all) => [{ id, agreement: a, status: "setup" }, ...all]);
       setActiveId(id);
       setStep(1);
-      setVerdict(null);
     } catch (e) {
       setErr(String(e));
     } finally {
@@ -185,7 +183,6 @@ export default function Home() {
         taxLines: (Array.isArray(raw.taxLines) ? raw.taxLines : []).map((t) => ({ type: (str(t.type).toUpperCase() as "IGST" | "CGST" | "SGST" | "GST"), ratePct: num(t.ratePct), amount: num(t.amount) })),
       };
       update((x) => ({ ...x, invoice: inv, status: "ready", verdict: undefined, history: x.invoice ? [...(x.history || []), { invoiceNo: x.invoice.invoiceNo, date: x.invoice.date, total: x.invoice.total, status: x.status, gstin: x.invoice.supplierGstin }] : x.history }));
-      setVerdict(null);
     } catch (e) {
       setErr(String(e));
     } finally {
@@ -204,27 +201,7 @@ export default function Home() {
   const dupInvoice = !!(v?.invoice && (v.history || []).some((h) => (h.invoiceNo && h.invoiceNo === v.invoice!.invoiceNo) || (h.total === v.invoice!.total && h.date === v.invoice!.date && (h.gstin || "") === (v.invoice!.supplierGstin || ""))));
   const gst = useMemo(() => (v?.invoice && check ? gstCheck(v.invoice, org.gstin, check.atRisk) : null), [v, check, org.gstin]);
 
-  async function runDispute() {
-    if (!v || !check) return;
-    setBusy("Drafting the dispute with evidence…");
-    try {
-      const res = await post<Vendor["verdict"]>("/api/explain", {
-        vendor: v.agreement.vendor,
-        invoice: { no: v.invoice?.invoiceNo, date: v.invoice?.date },
-        atRisk: check.atRisk,
-        lines: check.lines,
-        gstFindings: gst?.findings.filter((f) => f.level !== "ok"),
-        gstChargedOnOverbilling: gst?.taxAtRisk,
-        pastDisputes: (v.disputes || []).filter((d) => d.invoiceNo !== v.invoice?.invoiceNo),
-        clauses: v.agreement.costItems.map((c) => ({ id: c.id, name: c.name, clause: c.clause, billingEvent: c.billingEvent, answers: c.questions.map((q) => `${q.text} → ${q.answer ?? "unanswered"}`) })),
-      });
-      update((x) => ({ ...x, status: "disputed", verdict: res || undefined, disputes: [...(x.disputes || []).filter((d) => d.invoiceNo !== (x.invoice?.invoiceNo || "")), { invoiceNo: x.invoice?.invoiceNo || "", date: x.invoice?.date || "", amount: check.atRisk + check.unmatched, status: "open" }] }));
-    } catch (e) {
-      setErr(String(e));
-    } finally {
-      setBusy(null);
-    }
-  }
+
 
 
   const items = v?.agreement.costItems || [];
@@ -286,7 +263,7 @@ export default function Home() {
               const dot = x.status === "approved" ? "bg-ok" : x.status === "disputed" || (ch && ch.atRisk > 0) ? "bg-risk" : ch && ch.pending ? "bg-amber" : "bg-white/30";
               const sub = x.status === "approved" ? "Approved" : x.status === "disputed" ? "Disputed" : ch && ch.atRisk > 0 ? `${inr(ch.atRisk)} overbilled` : ch && ch.pending ? "Waiting for usage" : x.invoice ? "To review" : `${x.agreement.costItems.length} charges · no invoice`;
               return (
-                <button key={x.id} onClick={() => { setActiveId(x.id); setVerdict(null); }} className={`flex shrink-0 items-start gap-2 rounded-lg px-2.5 py-2 text-left ${x.id === activeId ? "bg-white/10" : "hover:bg-white/5"}`}>
+                <button key={x.id} onClick={() => setActiveId(x.id)} className={`flex shrink-0 items-start gap-2 rounded-lg px-2.5 py-2 text-left ${x.id === activeId ? "bg-white/10" : "hover:bg-white/5"}`}>
                   <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${dot}`} />
                   <span className="min-w-0"><span className="block truncate font-medium">{x.agreement.vendor}</span><span className="block text-[12px] text-white/55">{sub}</span></span>
                 </button>
@@ -424,8 +401,17 @@ export default function Home() {
                       </div>
                       <div className="ml-auto flex flex-wrap gap-2">
                         <label className="cursor-pointer rounded-md bg-black px-4 py-2 font-medium text-white hover:bg-black/85">
-                          Import usage file (CSV)
-                          <input type="file" accept=".csv,.txt" className="hidden" onChange={async (e) => { const f = e.target.files?.[0]; if (f) importUsage(await f.text(), f.name); e.target.value = ""; }} />
+                          Import usage file (CSV or Excel)
+                          <input type="file" accept=".csv,.txt,.xlsx,.xls" className="hidden" onChange={async (e) => {
+                            const f = e.target.files?.[0]; e.target.value = ""; if (!f) return;
+                            try {
+                              if (/\.xlsx?$/i.test(f.name)) {
+                                const XLSX = await import("xlsx");
+                                const wb = XLSX.read(await f.arrayBuffer());
+                                importUsage(XLSX.utils.sheet_to_csv(wb.Sheets[wb.SheetNames[0]]), f.name);
+                              } else importUsage(await f.text(), f.name);
+                            } catch (x) { setErr("Couldn't read that file: " + String(x)); }
+                          }} />
                         </label>
                         <button onClick={saveMonth} className="rounded-md border border-line bg-white px-3 py-2 font-medium hover:border-ink/40">Save {month} usage</button>
                       </div>
@@ -612,21 +598,6 @@ export default function Home() {
                       </>
                     )}
 
-                    {v.verdict && (
-                      <div className="grid gap-3 md:grid-cols-2">
-                        <div className="rounded-lg border border-line bg-white p-3">
-                          <div className="mb-1 font-semibold">Recommendation: <span className={v.verdict.verdict === "Pay" ? "text-ok" : "text-risk"}>{v.verdict.verdict}</span></div>
-                          <ul className="list-disc space-y-0.5 pl-4 text-ink-2">{v.verdict.reasons.map((r, i) => <li key={i}>{r}</li>)}</ul>
-                        </div>
-                        <div className="rounded-lg border border-line bg-white p-3">
-                          <div className="mb-1 flex items-center font-semibold">Dispute email
-                            <button onClick={() => navigator.clipboard?.writeText(`Subject: ${v.verdict!.email.subject}\n\n${v.verdict!.email.body}`)} className="ml-auto rounded-md border border-line px-2 py-0.5 text-[12px] font-normal">Copy</button>
-                          </div>
-                          <div className="text-[13px] font-medium">Subject: {v.verdict.email.subject}</div>
-                          <pre className="mt-1 max-h-64 overflow-auto whitespace-pre-wrap font-sans text-[13px] text-ink-2">{v.verdict.email.body}</pre>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 )}
               </Safe></div>
@@ -747,8 +718,8 @@ function TeamPanel({ org, setOrg, onClose }: { org: Org; setOrg: (o: Org) => voi
       <div className="h-full w-full max-w-md overflow-auto bg-white p-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center">
           <div>
-            <div className="font-display text-lg font-semibold">{org.name}</div>
-            <div className="text-slate">GSTIN {org.gstin || "not set"} · {org.plan} plan</div>
+            <input value={org.name} onChange={(e) => setOrg({ ...org, name: e.target.value })} className="w-full rounded-md border border-transparent px-1 font-serif text-[22px] hover:border-line focus:border-cobalt" aria-label="Company name" />
+            <div className="mt-1 flex items-center gap-2 px-1 text-slate">GSTIN <input value={org.gstin} onChange={(e) => setOrg({ ...org, gstin: e.target.value.toUpperCase() })} placeholder="Add for GST checks" maxLength={15} className="w-44 rounded-md border border-line px-2 py-0.5 font-mono text-[13px] text-ink" /> · {org.plan} plan</div>
           </div>
           <button onClick={onClose} className="ml-auto rounded px-2 py-1 text-slate hover:bg-paper" aria-label="Close">✕</button>
         </div>
@@ -940,7 +911,7 @@ function Dashboard({ vendors, open, setDispute, remove }: { vendors: Vendor[]; o
                       </select>
                     ) : <span className="text-slate">-</span>}
                   </td>
-                  <td className="px-3 py-2 text-right"><button onClick={() => { if (confirm(`Remove ${v.agreement.vendor}?`)) remove(v.id); }} className="text-[13px] text-slate hover:text-risk">Remove</button></td>
+                  <td className="px-3 py-2 text-right"><RemoveBtn onConfirm={() => remove(v.id)} /></td>
                 </tr>
               );
             })}
@@ -1063,4 +1034,11 @@ ${company}`;
       {open.length ? <EmailBox to={a.vendor} subject={subject} body={body} /> : <div className="rounded-xl border border-line bg-white p-3 text-slate">All points are handled. Once the vendor sends the final version, use "Upload final agreed agreement" at the top. Invoices will be checked against it.</div>}
     </div>
   );
+}
+
+function RemoveBtn({ onConfirm }: { onConfirm: () => void }) {
+  const [sure, setSure] = useState(false);
+  return sure ? (
+    <span className="whitespace-nowrap text-[13px]"><button onClick={onConfirm} className="font-medium text-risk">Yes, remove</button> · <button onClick={() => setSure(false)} className="text-slate">Cancel</button></span>
+  ) : <button onClick={() => setSure(true)} className="text-[13px] text-slate hover:text-risk">Remove</button>;
 }

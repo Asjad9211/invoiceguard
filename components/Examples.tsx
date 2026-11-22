@@ -33,7 +33,7 @@ export default function Examples() {
       <div key={i} className="fadeup overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-b from-[#161616] to-[#0b0b0b] text-left text-[#f4f2ee] shadow-[0_40px_100px_-40px_rgba(23,20,15,.55)]">
         <div className="flex items-center gap-2 border-b border-white/10 px-6 py-3.5 text-sm"><span className="flex gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-white/15" /><span className="h-2.5 w-2.5 rounded-full bg-white/15" /><span className="h-2.5 w-2.5 rounded-full bg-white/15" /></span>
           <span className="font-medium">{e.doc}</span>
-          <span className="ml-auto font-mono text-[10px] tracking-widest text-[#ff9b7a]">READ BY INVOICEGUARD</span>
+          <span className="ml-auto font-mono text-[10px] tracking-widest text-[#a9c1ff]">READ BY INVOICEGUARD</span>
         </div>
         <div className="px-6 py-5">
           <div className="text-[11px] uppercase tracking-[0.18em] text-white/45">Charge found</div>
@@ -42,7 +42,7 @@ export default function Examples() {
         </div>
         <div className="border-t border-white/10 px-6 py-5">
           <div className="text-[11px] uppercase tracking-[0.18em] text-white/45">The agreement doesn&apos;t say</div>
-          <div className="mt-2 flex flex-wrap gap-1.5 text-[12px]">{e.unclear.map((q) => <span key={q} className="rounded-full border border-[#ff8a65]/40 px-3 py-1 text-[#ff9b7a]">{q}</span>)}</div>
+          <div className="mt-2 flex flex-wrap gap-1.5 text-[12px]">{e.unclear.map((q) => <span key={q} className="rounded-full border border-[#8fb0ff]/40 px-3 py-1 text-[#a9c1ff]">{q}</span>)}</div>
         </div>
         <ul className="grid border-t border-white/10 text-sm md:grid-cols-3 md:divide-x md:divide-white/10">
           {e.checks.map(([a, b], n) => (

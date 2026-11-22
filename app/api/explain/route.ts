@@ -1,8 +1,11 @@
+import { guard } from "@/lib/guard";
 import { askJSON, FAST_MODEL } from "@/lib/claude";
 
 export const maxDuration = 300;
 
 export async function POST(req: Request) {
+  const blocked = guard(req);
+  if (blocked) return blocked;
   try {
     const body = await req.json();
     const data = await askJSON<{ verdict: "Pay" | "Hold" | "Dispute"; reasons: string[]; email: { subject: string; body: string } }>(

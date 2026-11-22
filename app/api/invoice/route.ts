@@ -1,9 +1,12 @@
+import { guard } from "@/lib/guard";
 import { askJSON, type DocInput } from "@/lib/claude";
 import type { Invoice } from "@/lib/types";
 
 export const maxDuration = 300;
 
 export async function POST(req: Request) {
+  const blocked = guard(req);
+  if (blocked) return blocked;
   try {
     const body = (await req.json()) as DocInput & { costItems: { id: string; name: string; unit: string }[] };
     if (!body.text && !body.pdfBase64 && !body.docxBase64 && !body.images?.length) return Response.json({ error: "No invoice provided" }, { status: 400 });

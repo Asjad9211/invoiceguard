@@ -1,9 +1,12 @@
+import { guard } from "@/lib/guard";
 import { askJSON } from "@/lib/claude";
 
 export const maxDuration = 120;
 
 // Claude writes the counting rule from the file's columns and sample rows. Code applies it to every row.
 export async function POST(req: Request) {
+  const blocked = guard(req);
+  if (blocked) return blocked;
   try {
     const body = (await req.json()) as { headers: string[]; sample: string[][]; rowCount: number; distinct?: Record<string, string[]>; costItems: { id: string; name: string; unit: string; billingEvent: string; includes?: string[]; answers?: string[] }[] };
     if (!body.headers?.length) return Response.json({ error: "No columns found in the file" }, { status: 400 });

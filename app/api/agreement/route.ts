@@ -1,3 +1,4 @@
+import { guard } from "@/lib/guard";
 import { askJSON, type DocInput } from "@/lib/claude";
 import type { Agreement } from "@/lib/types";
 
@@ -60,6 +61,8 @@ Rules:
 - Rates in ₹ (convert paise: 14 paise = 0.14).`;
 
 export async function POST(req: Request) {
+  const blocked = guard(req);
+  if (blocked) return blocked;
   try {
     const body = (await req.json()) as DocInput & { checklist?: string[] };
     if (!body.text && !body.pdfBase64 && !body.docxBase64 && !body.images?.length) return Response.json({ error: "No agreement provided" }, { status: 400 });

@@ -27,11 +27,11 @@ export default function Examples() {
     <div>
       <div className="mb-3 flex flex-wrap gap-1.5">
         {EX.map((x, k) => (
-          <button key={x.tab} onClick={() => { setI(k); setHold(true); }} className={`rounded-full px-3 py-1 text-[13px] font-medium transition-colors ${k === i ? "bg-ink text-white" : "bg-white text-slate ring-1 ring-line hover:text-ink"}`}>{x.tab}</button>
+          <button key={x.tab} onClick={() => { setI(k); setHold(true); }} className={`rounded-full px-3 py-1 text-[13px] font-medium transition-colors ${k === i ? "bg-white text-ink" : "bg-white/5 text-white/70 ring-1 ring-white/15 hover:text-white"}`}>{x.tab}</button>
         ))}
       </div>
-      <div className="rounded-xl border border-line bg-white shadow-[0_24px_60px_-30px_rgba(11,18,32,.35)]">
-        <div className="flex items-center gap-2 border-b border-line px-4 py-2.5 text-sm">
+      <div key={i} className="glow fadeup overflow-hidden rounded-2xl border border-white/10 bg-white text-ink">
+        <div className="flex items-center gap-2 border-b border-line bg-paper px-4 py-2.5 text-sm"><span className="flex gap-1"><span className="h-2.5 w-2.5 rounded-full bg-coral" /><span className="h-2.5 w-2.5 rounded-full bg-sun" /><span className="h-2.5 w-2.5 rounded-full bg-teal" /></span>
           <span className="font-medium">{e.doc}</span>
           <span className="ml-auto rounded bg-cobalt-50 px-2 py-0.5 font-mono text-[11px] text-cobalt">READ BY INVOICEGUARD</span>
         </div>
@@ -45,9 +45,9 @@ export default function Examples() {
           <div className="mt-2 flex flex-wrap gap-1.5 text-[12px]">{e.unclear.map((q) => <span key={q} className="rounded-md border border-cobalt-100 bg-white px-2 py-1">{q}</span>)}</div>
         </div>
         <ul className="divide-y divide-line border-t border-line text-sm">
-          {e.checks.map(([a, b]) => (
+          {e.checks.map(([a, b], n) => (
             <li key={a} className="flex items-start gap-3 px-4 py-2.5">
-              <svg viewBox="0 0 24 24" className="mt-0.5 h-4 w-4 shrink-0 text-cobalt" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 12l2 2 4-4M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z" /></svg>
+              <svg viewBox="0 0 24 24" className={`mt-0.5 h-4 w-4 shrink-0 ${["text-cobalt", "text-coral", "text-teal"][n]}`} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 12l2 2 4-4M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z" /></svg>
               <div><div className="font-medium">{a}</div><div className="text-[12px] text-slate">{b}</div></div>
             </li>
           ))}

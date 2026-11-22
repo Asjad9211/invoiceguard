@@ -207,7 +207,7 @@ export default function Home() {
   const notStated = items.flatMap((c) => c.questions.filter((q) => q.answer && /not stated/i.test(q.answer)).map((q) => ({ item: c.name, q: q.text })));
 
   return (
-    <div className="flex h-dvh flex-col bg-paper text-[14px] text-ink">
+    <div className="app-bg flex h-dvh flex-col text-[14px] text-ink">
       {/* top bar */}
       <header className="flex h-14 shrink-0 items-center gap-3 border-b border-line bg-white px-4">
         <Link href="/" aria-label="Home"><Logo /></Link>
@@ -284,7 +284,7 @@ export default function Home() {
             <>
               {/* vendor header + stepper */}
               <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b border-zinc-200 bg-white px-3 py-1.5">
-                <div className="font-semibold">{v.agreement.vendor}</div>
+                <div className="flex items-center gap-2"><span className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-cobalt to-violet font-display text-sm font-bold text-white">{v.agreement.vendor.slice(0, 1)}</span><span className="font-display text-[17px] font-semibold">{v.agreement.vendor}</span></div>
                 <div className="text-zinc-500">{v.agreement.service} · {v.agreement.period}</div>
                 <div className="ml-auto flex overflow-hidden rounded-lg border border-line bg-white p-0.5">
                   {([
@@ -292,7 +292,7 @@ export default function Home() {
                     [2, `Who checks ${setupDone}/${items.length}`],
                     [3, v.invoice ? (check && check.atRisk > 0 ? `Invoice · ${inr(check.atRisk)} at risk` : missingUsage ? "Invoice · usage needed" : v.status === "approved" ? "Invoice ✓" : "Invoice") : "Invoice"],
                   ] as [Step, string][]).map(([s, label]) => (
-                    <button key={s} onClick={() => setStep(s)} className={`rounded-md px-3 py-1.5 font-medium ${step === s ? "bg-ink text-white" : "text-slate hover:bg-paper hover:text-ink"}`}>
+                    <button key={s} onClick={() => setStep(s)} className={`rounded-md px-3 py-1.5 font-medium transition-colors ${step === s ? "bg-gradient-to-r from-cobalt to-violet text-white shadow-sm" : "text-slate hover:bg-paper hover:text-ink"}`}>
                       {s} {label}
                     </button>
                   ))}
@@ -610,10 +610,10 @@ class Safe extends Component<{ children: ReactNode }, { err: string | null }> {
 }
 
 function Stat({ label, value, tone, sub }: { label: string; value: string; tone?: "good" | "bad" | "warn"; sub?: string }) {
-  const t = tone === "bad" ? "border-risk/30 bg-risk-50" : tone === "warn" ? "border-amber/30 bg-amber-50" : tone === "good" ? "border-ok/30 bg-ok-50" : "border-line bg-white";
+  const t = tone === "bad" ? "border-l-coral bg-white" : tone === "warn" ? "border-l-sun bg-white" : tone === "good" ? "border-l-teal bg-white" : "border-l-cobalt bg-white";
   const c = tone === "bad" ? "text-risk" : tone === "warn" ? "text-amber" : tone === "good" ? "text-ok" : "text-ink";
   return (
-    <div className={`rounded-lg border px-3 py-2 ${t}`}>
+    <div className={`fadeup rounded-xl border border-line border-l-4 px-3.5 py-2.5 shadow-sm ${t}`}>
       <div className="text-[11px] font-medium uppercase tracking-wide text-slate">{label}</div>
       <div className={`tnum font-display text-xl font-semibold ${c}`}>{value}</div>
       {sub && <div className={`text-[12px] ${c}`}>{sub}</div>}

@@ -15,6 +15,14 @@
   --color-risk-50: #fff1f0;
   --color-ok: #0e7490;
   --color-ok-50: #ecfeff;
+  --color-violet: #7c3aed;
+  --color-violet-50: #f3efff;
+  --color-teal: #0d9488;
+  --color-teal-50: #e6fbf8;
+  --color-sun: #f59e0b;
+  --color-sun-50: #fff8e6;
+  --color-coral: #f2545b;
+  --color-coral-50: #fff0f0;
   --font-display: var(--font-space-grotesk), ui-sans-serif, system-ui;
   --font-sans: var(--font-inter), ui-sans-serif, system-ui;
   --font-mono: var(--font-jetbrains), ui-monospace, monospace;
@@ -50,3 +58,22 @@ label {
 }
 
 @keyframes slide { 0% { transform: translateX(-100%); } 100% { transform: translateX(300%); } }
+
+.hero-dark {
+  background: radial-gradient(60% 80% at 85% 10%, rgba(47, 91, 255, 0.45) 0%, transparent 60%),
+    radial-gradient(50% 60% at 10% 90%, rgba(124, 58, 237, 0.35) 0%, transparent 60%), #0b1220;
+}
+.text-gradient {
+  background: linear-gradient(90deg, #7ea0ff, #b794ff 50%, #5eead4);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.lift { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+.lift:hover { transform: translateY(-3px); box-shadow: 0 18px 40px -24px rgba(11, 18, 32, 0.45); }
+.glow { box-shadow: 0 0 0 1px rgba(255,255,255,.08), 0 30px 80px -30px rgba(47, 91, 255, 0.6); }
+@keyframes floaty { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-8px) } }
+.floaty { animation: floaty 6s ease-in-out infinite; }
+@keyframes fadeup { from { opacity: 0; transform: translateY(8px) } to { opacity: 1; transform: none } }
+.fadeup { animation: fadeup .45s ease both; }
+.app-bg { background: linear-gradient(180deg, #f3f5ff 0%, #f7f8fb 220px); }

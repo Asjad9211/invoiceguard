@@ -99,7 +99,7 @@ export interface Vendor {
   status: "setup" | "ready" | "approved" | "disputed";
   history?: { invoiceNo: string; date: string; total: number; status: string; gstin?: string | null }[];
   verdict?: { verdict: string; reasons: string[]; email: { subject: string; body: string } };
-  approval?: { amount: number; by: string; on: string };
+  approval?: { amount: number; by: string; on: string; exception?: string; exceptionItems?: string[] };
   issueState?: Record<string, PointStatus>;
   pointState?: Record<string, PointStatus>;
   agreementVersions?: { label: string; date: string }[];

@@ -34,11 +34,11 @@ export function gstCheck(inv: Invoice, buyerGstinFallback: string | undefined, o
     const inter = sup.slice(0, 2) !== buy.slice(0, 2);
     const route = `${STATES[sup.slice(0, 2)] || sup.slice(0, 2)} → ${STATES[buy.slice(0, 2)] || buy.slice(0, 2)}`;
     if (inter && (types.has("CGST") || types.has("SGST")))
-      out.push({ level: "risk", title: "Wrong tax type: should be IGST", detail: `Inter-state supply (${route}) must charge IGST, not CGST + SGST. Credit for wrongly charged tax can be denied, so ask for a corrected invoice.` });
+      out.push({ level: "warn", title: "Possible tax type mismatch", detail: `The GSTINs are in different states (${route}), which usually means IGST, but the invoice charges CGST + SGST. Please verify the place of supply and the correct tax treatment with your tax team before paying.` });
     else if (!inter && types.has("IGST"))
-      out.push({ level: "risk", title: "Wrong tax type: should be CGST + SGST", detail: `Intra-state supply (${route}) must charge CGST + SGST, not IGST.` });
+      out.push({ level: "warn", title: "Possible tax type mismatch", detail: `Both GSTINs are in the same state (${route}), which usually means CGST + SGST, but the invoice charges IGST. Please verify the place of supply and the correct tax treatment with your tax team.` });
     else if (types.size)
-      out.push({ level: "ok", title: `${inter ? "IGST" : "CGST + SGST"} correctly applied`, detail: `${inter ? "Inter" : "Intra"}-state supply · ${route}` });
+      out.push({ level: "ok", title: `${inter ? "IGST" : "CGST + SGST"} matches the GSTIN states`, detail: `${route}. Place of supply on the invoice should also be checked.` });
     else out.push({ level: "warn", title: "Tax type not shown", detail: `Invoice shows GST without the split. For ${route} it should be ${inter ? "IGST" : "CGST + SGST"}.` });
   }
 

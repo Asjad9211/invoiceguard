@@ -4,7 +4,7 @@ import { Component, useEffect, useMemo, useRef, useState, type ReactNode } from 
 import type { Agreement, CostItem, Invoice, Vendor, PointStatus } from "@/lib/types";
 import { checkInvoice, cliffInsight, cliffZones, costFor, fmtN, inr, round, slabIssue } from "@/lib/calc";
 import { gstCheck } from "@/lib/gst";
-import { parseCSV, applyRule, validateRule, distinctValues, type UsageRule } from "@/lib/usage";
+import { parseCSV, applyRuleDetailed, validateRule, distinctValues, type UsageRule } from "@/lib/usage";
 import { computeAlerts, monthLabel } from "@/lib/alerts";
 import { DEMO_ORG, DEFAULT_CHECKLIST, loadOrg, saveOrg, ROLE_INFO, type Org, type Role } from "@/lib/org";
 import { Logo } from "@/components/Logo";
@@ -129,9 +129,12 @@ export default function Home() {
         if (!r) return c;
         const bad = validateRule(headers, r);
         if (bad) return { ...c, usageRule: `Not counted: ${bad}. Enter the number manually.` };
-        const n = applyRule(headers, data, r);
+        const res2 = applyRuleDetailed(headers, data, r);
         const where = r.filters.map((f) => `${f.column} ${f.op.replace("_", " ")} ${f.values.join("/")}`).join(", ");
-        return { ...c, actualQty: n, usageRule: `${fmtN(n)} of ${fmtN(data.length)} rows${where ? ` where ${where}` : ""} (${fileName}, imported ${new Date().toLocaleDateString("en-IN")}). ${r.explanation} Check and edit if needed.`, sourceNote: c.sourceNote || "Uploaded usage file" };
+        const problems = res2.invalid + res2.blank;
+        const base = `${fmtN(res2.total)} counted from ${fmtN(res2.matched)} of ${fmtN(data.length)} rows${where ? ` where ${where}` : ""} (${fileName}, imported ${new Date().toLocaleDateString("en-IN")}). ${r.explanation}`;
+        if (problems > 0) return { ...c, actualQty: undefined, usageRule: `Needs your check: ${res2.invalid ? `${res2.invalid} rows have an unreadable quantity` : ""}${res2.invalid && res2.blank ? " and " : ""}${res2.blank ? `${res2.blank} rows have a blank status or filter field` : ""}. Nothing was filled in. ${base} Enter the confirmed number yourself once checked.`, sourceNote: c.sourceNote || "Uploaded usage file" };
+        return { ...c, actualQty: res2.total, usageRule: `${base} Check and edit if needed.`, sourceNote: c.sourceNote || "Uploaded usage file" };
       }) } }));
       setUsageNotes([`${fmtN(data.length)} rows read.`, ...(res.notes || [])]);
     } catch (e) {
@@ -194,6 +197,10 @@ export default function Home() {
 
   const check = useMemo(() => (v?.invoice ? checkInvoice(v.invoice, v.agreement.costItems) : null), [v]);
   const missingUsage = check ? check.pending : 0;
+  const [excReason, setExcReason] = useState("");
+  const blocking = check && v?.invoice ? buildIssues(check.lines, [], false).filter((i) => i.amount !== undefined) : [];
+  const openIssues = blocking.filter((i) => ((v?.issueState || {})[i.key] || "open") === "open").length;
+  const exceptions = blocking.filter((i) => ["keep", "ignored"].includes((v?.issueState || {})[i.key] || "")).map((i) => i.title);
   const [alerts, setAlerts] = useState<ReturnType<typeof computeAlerts>>([]);
   const [month, setMonth] = useState("");
   useEffect(() => {
@@ -622,11 +629,14 @@ export default function Home() {
                           ) : (
                             <>
                               <span className="mr-auto text-slate">
-                                {check.atRisk > 0 ? "Some charges don't match the agreement or your usage." : check.pending > 0 ? "Rates match. Enter the confirmed usage in the table above to approve." : check.unmatched > 0 ? "Some charges aren't in the agreement. Check if they were approved separately." : "Everything matches the agreement and your usage."}
+                                {openIssues > 0 && (check.atRisk > 0 || check.unmatched > 0) ? `Approval is locked until each of the ${openIssues} open issue${openIssues > 1 ? "s" : ""} below is resolved, discussed, kept or ignored.` : check.atRisk > 0 ? "Some charges don't match the agreement or your usage." : check.pending > 0 ? "Rates match. Enter the confirmed usage in the table above to approve." : check.unmatched > 0 ? "Some charges aren't in the agreement. Check if they were approved separately." : "Everything matches the agreement and your usage."}
                               </span>
                               
                               {(check.atRisk > 0 || check.unmatched > 0) && <button onClick={() => update((x) => ({ ...x, status: "disputed", disputes: [...(x.disputes || []).filter((d) => d.invoiceNo !== (x.invoice?.invoiceNo || "")), { invoiceNo: x.invoice?.invoiceNo || "", date: x.invoice?.date || "", amount: check.atRisk + check.unmatched, status: "open" }] }))} className="rounded-md bg-risk px-3 py-2 font-semibold text-white">Mark as disputed</button>}
-                              <button disabled={check.pending > 0} onClick={() => update((x) => ({ ...x, status: "approved", approval: { amount: check.atRisk > 0 ? check.expectedSubtotal : x.invoice!.subtotal, by: org.members[0]?.name || "You", on: new Date().toLocaleDateString("en-IN") } }))} className={`rounded-md px-3 py-2 font-semibold ${check.atRisk > 0 || check.unmatched > 0 ? "border border-line" : "bg-gold text-white"} disabled:opacity-40`}>
+                              {exceptions.length > 0 && openIssues === 0 && (
+                                <input value={excReason} onChange={(e) => setExcReason(e.target.value)} placeholder={`Why approve with ${exceptions.length} issue${exceptions.length > 1 ? "s" : ""} ignored or kept?`} className="min-w-[220px] flex-1 rounded-md border border-line px-3 py-2 text-[13px]" />
+                              )}
+                              <button title={check.pending > 0 ? "Confirm usage first" : openIssues > 0 ? "Resolve, discuss or mark every issue first" : ""} disabled={check.pending > 0 || openIssues > 0 || (exceptions.length > 0 && excReason.trim().length < 5)} onClick={() => update((x) => ({ ...x, status: "approved", approval: exceptions.length ? { amount: check.atRisk > 0 ? check.expectedSubtotal : x.invoice!.subtotal, by: org.members[0]?.name || "You", on: new Date().toLocaleDateString("en-IN"), exception: excReason.trim(), exceptionItems: exceptions } : { amount: check.atRisk > 0 ? check.expectedSubtotal : x.invoice!.subtotal, by: org.members[0]?.name || "You", on: new Date().toLocaleDateString("en-IN") } }))} className={`rounded-md px-3 py-2 font-semibold ${check.atRisk > 0 || check.unmatched > 0 ? "border border-line" : "bg-gold text-white"} disabled:opacity-40`}>
                                 {personal ? "Mark as paid" : `Approve ${inr(check.atRisk > 0 ? check.expectedSubtotal : v.invoice.subtotal)} + GST`}
                               </button>
                             </>
@@ -1129,7 +1139,7 @@ Invoice: ${inv.invoiceNo}, dated ${inv.date}
 Approved amount: ${inr(base)} + GST ${inr(gst)} = ${inr(round(base + gst))}${held > 1 ? `\nHeld back: ${inr(held)} before GST, under dispute with the vendor` : ""}${due ? `\nPay by: ${due} (${pay!.label.toLowerCase()} as per agreement)` : ""}
 Checks done: rates against the agreement, usage confirmed by owners, GST type and arithmetic${resolved ? `, ${resolved} issue${resolved > 1 ? "s" : ""} reviewed` : ""}.
 
-Approved by ${ap?.by || "me"} on ${ap?.on || ""}.
+Approved by ${ap?.by || "me"} on ${ap?.on || ""}.${ap?.exception ? `\nApproved with exception: ${ap.exception} (${(ap.exceptionItems || []).join("; ")})` : ""}
 
 Thanks`;
   return (

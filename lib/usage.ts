@@ -39,6 +39,35 @@ export function distinctValues(headers: string[], rows: string[][], col: string,
 }
 
 export function applyRule(headers: string[], rows: string[][], r: UsageRule): number {
+  return applyRuleDetailed(headers, rows, r).total;
+}
+
+export function applyRuleDetailed(headers: string[], rows: string[][], r: UsageRule): { total: number; matched: number; invalid: number; blank: number } {
+  const idx2 = (c: string) => headers.findIndex((h) => h.trim().toLowerCase() === c.trim().toLowerCase());
+  let total = 0, matched = 0, invalid = 0, blank = 0;
+  for (const row of rows) {
+    if (r.filters.some((f) => (row[idx2(f.column)] ?? "").trim() === "")) { blank++; continue; }
+    const ok = r.filters.every((f) => {
+      const v = (row[idx2(f.column)] ?? "").trim().toLowerCase();
+      const vals = f.values.map((x) => x.trim().toLowerCase());
+      if (f.op === "equals") return v === vals[0];
+      if (f.op === "in") return vals.includes(v);
+      if (f.op === "not_in") return !vals.includes(v);
+      return vals.some((x) => v.includes(x));
+    });
+    if (!ok) continue;
+    if (r.mode === "sum" && r.sumColumn) {
+      const raw = String(row[idx2(r.sumColumn)] ?? "").replace(/,/g, "").trim();
+      const n = Number(raw);
+      if (raw === "" || !isFinite(n)) { invalid++; continue; }
+      total += n;
+    } else total += 1;
+    matched++;
+  }
+  return { total, matched, invalid, blank };
+}
+
+export function applyRuleOld(headers: string[], rows: string[][], r: UsageRule): number {
   const idx = (c: string) => headers.findIndex((h) => h.trim().toLowerCase() === c.trim().toLowerCase());
   const norm = (x: string) => (x ?? "").trim().toLowerCase();
   let total = 0;

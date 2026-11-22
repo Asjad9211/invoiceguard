@@ -4,7 +4,11 @@ const hits = new Map<string, number[]>();
 export function guard(req: Request, limitPerMin = 12): Response | null {
   const origin = req.headers.get("origin") || "";
   const host = req.headers.get("host") || "";
-  if (origin && host && !origin.endsWith("//" + host)) return Response.json({ error: "Not allowed" }, { status: 403 });
+  if (origin && host) {
+    let ok = false;
+    try { ok = new URL(origin).host === host; } catch {}
+    if (!ok) return Response.json({ error: "Not allowed" }, { status: 403 });
+  }
   const len = Number(req.headers.get("content-length") || 0);
   if (len > 4_400_000) return Response.json({ error: "This file is too large. Try a smaller file or just the pricing pages." }, { status: 413 });
   const ip = (req.headers.get("x-forwarded-for") || "local").split(",")[0].trim();

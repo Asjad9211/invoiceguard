@@ -78,39 +78,50 @@ export default function Landing() {
 
       {/* hero */}
       <section className="spot relative">
-        <div className="mx-auto max-w-5xl px-5 pb-10 pt-14 text-center md:pt-20">
-          <div className="fadeup mx-auto mb-6 w-fit rounded-full border lux-line px-3.5 py-1 text-[12px] tracking-wide lux-muted">For finance and operations teams in India</div>
-          <h1 className="fadeup font-serif text-[52px] leading-[0.98] tracking-tight md:text-[92px]">
-            Every vendor bill,<br /><em className="text-gold">checked</em> before you pay.
+        <div className="mx-auto max-w-6xl px-5 pb-6 pt-8 text-center md:pt-12">
+          <h1 className="fadeup font-serif text-[38px] leading-[1.02] tracking-tight md:text-[60px]">
+            Every vendor bill, <em className="text-gold">checked</em> before you pay.
           </h1>
-          <p className="mx-auto mt-6 max-w-xl text-[17px] leading-relaxed lux-muted">
-            Upload the agreement once. Upload each invoice. See what you should have been charged, where the bill is off, and whether the GST is right.
+          <p className="mx-auto mt-4 max-w-2xl text-[16px] leading-relaxed lux-muted">
+            Upload the agreement once, then each invoice. See what you should have been charged, where the bill is off, and whether the GST is right.
           </p>
-          <div className="mt-9 flex flex-wrap justify-center gap-3">
-            <Link href="/signup" className="rounded-full bg-gold px-6 py-3 text-[15px] font-medium text-white shadow-[0_10px_30px_-12px_rgba(36,72,216,.7)] hover:bg-[#1c3bb8]">Start free</Link>
-            <Link href="/app" className="rounded-full border border-[#17140f]/25 px-6 py-3 text-[15px] font-medium hover:border-[#17140f]">Upload an agreement <span aria-hidden>→</span></Link>
-            <a href="#demo" className="rounded-full border border-[#17140f]/25 px-6 py-3 text-[15px] font-medium hover:border-[#17140f]">▶ Watch 1-min demo</a>
-          </div>
-          <p className="mt-5 text-[13px] lux-muted">Free for your first 3 vendors. No card needed.</p>
         </div>
-        <div id="demo" className="mx-auto max-w-5xl px-5 pb-12">
-          <div className="grid gap-5 md:grid-cols-[1.4fr_1fr]">
-            <div className="overflow-hidden rounded-2xl border lux-line bg-white">
-              <video src="/demo.mp4" poster="/demo-poster.jpg" controls playsInline preload="metadata" className="block aspect-video w-full" />
-              <div className="px-4 py-3 text-left text-[14px] lux-muted">Watch the 1-minute product tour (sound on)</div>
+        <div id="demo" className="mx-auto max-w-6xl px-5 pb-12">
+          <div className="grid gap-5 md:grid-cols-2">
+            <div className="flex flex-col overflow-hidden rounded-2xl border lux-line bg-white text-left shadow-[0_20px_50px_-30px_rgba(14,26,70,.35)]">
+              <div className="flex items-center gap-3 px-5 pt-5">
+                <span className="grid h-8 w-8 place-items-center rounded-full bg-gold text-[14px] font-bold text-white">1</span>
+                <div>
+                  <div className="text-[19px] font-semibold">Watch the 1-minute demo</div>
+                  <div className="text-[13px] lux-muted">The full flow, sound on</div>
+                </div>
+              </div>
+              <div className="p-4"><video src="/demo.mp4" poster="/demo-poster.jpg" controls playsInline preload="metadata" className="block aspect-video w-full rounded-xl bg-[#f4efe6]" /></div>
             </div>
-            <div className="rounded-2xl border lux-line bg-white p-5 text-left">
-              <div className="text-[18px] font-semibold">Try it yourself in 2 minutes</div>
-              <p className="mt-1 text-[14px] lux-muted">Sample files for a made-up vendor, Nimbus KYC. No login needed.</p>
-              <ol className="mt-4 space-y-3 text-[14px]">
-                <li><span className="font-semibold">1.</span> Download the <a className="text-gold underline" href="/samples/nimbus-kyc-agreement.pdf" download>sample agreement</a> and open the app. Tap <b>Add vendor</b> and upload it.</li>
-                <li><span className="font-semibold">2.</span> Go to <b>Invoice</b> and upload the <a className="text-gold underline" href="/samples/nimbus-kyc-invoice-oct-2026.pdf" download>sample invoice</a>.</li>
-                <li><span className="font-semibold">3.</span> In <b>Who checks</b>, import the <a className="text-gold underline" href="/samples/nimbus-usage-oct-2026.csv" download>usage file</a> (1,140 completed of 1,200 billed), or type 1,140 as confirmed.</li>
-                <li><span className="font-semibold">4.</span> See the overbilling, GST check, email drafts and the approval lock.</li>
+            <div className="flex flex-col rounded-2xl border-2 border-gold bg-white p-5 text-left shadow-[0_20px_50px_-30px_rgba(36,72,216,.5)]">
+              <div className="flex items-center gap-3">
+                <span className="grid h-8 w-8 place-items-center rounded-full bg-gold text-[14px] font-bold text-white">2</span>
+                <div>
+                  <div className="text-[19px] font-semibold">Try the real product</div>
+                  <div className="text-[13px] lux-muted">No login. Takes about 2 minutes.</div>
+                </div>
+              </div>
+              <div className="mt-4 text-[13px] font-semibold uppercase tracking-wide lux-muted">Download the sample files</div>
+              <div className="mt-2 grid gap-2">
+                <a href="/samples/nimbus-kyc-agreement.pdf" download className="flex items-center justify-between rounded-xl border lux-line px-4 py-2.5 hover:border-gold"><span><b className="text-[14px]">Agreement</b> <span className="text-[13px] lux-muted">· Nimbus KYC, PDF</span></span><span className="text-gold">↓</span></a>
+                <a href="/samples/nimbus-kyc-invoice-oct-2026.pdf" download className="flex items-center justify-between rounded-xl border lux-line px-4 py-2.5 hover:border-gold"><span><b className="text-[14px]">Invoice</b> <span className="text-[13px] lux-muted">· October, 1,200 onboardings billed</span></span><span className="text-gold">↓</span></a>
+                <a href="/samples/nimbus-usage-oct-2026.csv" download className="flex items-center justify-between rounded-xl border lux-line px-4 py-2.5 hover:border-gold"><span><b className="text-[14px]">Usage report</b> <span className="text-[13px] lux-muted">· CSV, 1,140 actually completed</span></span><span className="text-gold">↓</span></a>
+              </div>
+              <ol className="mt-4 space-y-1.5 text-[14px]">
+                <li><b>1.</b> Open the app, tap <b>Add vendor</b>, upload the agreement.</li>
+                <li><b>2.</b> In <b>Invoice</b>, upload the invoice.</li>
+                <li><b>3.</b> Import the usage report in <b>Who checks</b>, or type 1,140 as confirmed.</li>
               </ol>
-              <Link href="/app" className="mt-5 inline-block rounded-full bg-gold px-5 py-2.5 text-[14px] font-medium text-white hover:bg-[#1c3bb8]">Open the app →</Link>
+              <p className="mt-3 rounded-lg bg-[#2448d8]/[.07] px-3 py-2 text-[13px]">Or upload <b>your own</b> agreement and invoice. PDF, Word, scan or photo.</p>
+              <Link href="/app" className="mt-4 rounded-full bg-gold px-5 py-3 text-center text-[15px] font-medium text-white hover:bg-[#1c3bb8]">Open the app →</Link>
             </div>
           </div>
+          <p className="mt-4 text-center text-[13px] lux-muted">Free for your first 3 vendors. No card needed. · <Link href="/signup" className="underline">Create a team account</Link></p>
         </div>
         <div className="mx-auto max-w-3xl px-5 pb-14">
           <Examples />

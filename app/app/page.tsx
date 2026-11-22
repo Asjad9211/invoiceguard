@@ -210,7 +210,7 @@ export default function Home() {
   const notStated = items.flatMap((c) => c.questions.filter((q) => q.answer && /not stated/i.test(q.answer)).map((q) => ({ item: c.name, q: q.text })));
 
   return (
-    <div className="flex h-dvh flex-col bg-[#f4efe6] text-[14px] text-ink">
+    <div className="flex min-h-dvh flex-col bg-[#f4efe6] text-[14px] text-ink md:h-dvh">
       {/* top bar */}
       <header className="flex h-14 shrink-0 items-center gap-3 border-b border-line bg-white px-4">
         <Link href="/" aria-label="Home"><Logo /></Link>
@@ -237,7 +237,7 @@ export default function Home() {
           </div>
           <button onClick={() => setTeamOpen(true)} className="flex items-center gap-1.5 rounded-md border border-line px-2 py-1 hover:bg-paper">
             <span className="grid h-5 w-5 place-items-center rounded-full bg-ink text-[10px] font-semibold text-white">{org.name.slice(0, 1)}</span>
-            <span className="max-w-[140px] truncate font-medium">{org.name}</span>
+            <span className="hidden max-w-[140px] truncate font-medium sm:inline">{org.name}</span>
             <span className="text-slate">· Team {org.members.length}</span>
           </button>
         </div>
@@ -277,7 +277,7 @@ export default function Home() {
         </aside>
 
         {/* workspace */}
-        <main className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <main className="flex min-h-0 flex-1 flex-col md:overflow-hidden">
           {busy && <Reading label={busy} file={stage} />}
           {err && <div className="shrink-0 bg-red-50 px-3 py-1.5 text-red-700">{err} <button className="underline" onClick={() => setErr(null)}>dismiss</button></div>}
 
@@ -301,7 +301,7 @@ export default function Home() {
                     [2, `Who checks ${setupDone}/${items.length}`],
                     [3, v.invoice ? (check && check.atRisk > 0 ? `Invoice · ${inr(check.atRisk)} at risk` : missingUsage ? "Invoice · usage needed" : v.status === "approved" ? "Invoice ✓" : "Invoice") : "Invoice"],
                   ] as [Step, string][]).map(([s, label]) => (
-                    <button key={s} onClick={() => setStep(s)} className={`rounded-md px-3 py-1.5 font-medium transition-colors ${step === s ? "bg-black text-white" : "text-slate hover:bg-paper hover:text-ink"}`}>
+                    <button key={s} onClick={() => setStep(s)} className={`whitespace-nowrap rounded-md px-3 py-1.5 font-medium transition-colors ${step === s ? "bg-black text-white" : "text-slate hover:bg-paper hover:text-ink"}`}>
                       {s} {label}
                     </button>
                   ))}

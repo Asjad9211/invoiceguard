@@ -35,7 +35,8 @@ Clause 7 — Invoicing: Provider will invoice monthly in arrears with usage repo
     invoice: `TAX INVOICE
 PingWave Communications Pvt Ltd · GSTIN 27AABCP1234Q1Z5
 Invoice No: PW/2026-27/1184   Date: 01-Nov-2026   Period: October 2026
-Bill to: Acme Finserv Pvt Ltd
+Bill to: Acme Finserv Pvt Ltd · GSTIN 29AABCA1234F1Z5 (Karnataka)
+SAC: 998422
 
 Line items:
 1. Transactional SMS — 4,20,000 messages @ ₹0.15 = ₹63,000.00
@@ -73,10 +74,11 @@ Pricing (exclusive of GST @18%), billed monthly:
 Each API is billed independently. A customer journey that is abandoned midway shall be billed only for the APIs invoked.
 Volume discounts: none in this term.
 Vendor shall provide a monthly usage report with session-level status.`,
-    invoice: `INVOICE
-VerifyFast Technologies Pvt Ltd · GSTIN 29AAFCV5678K1Z2
+    invoice: `TAX INVOICE
+VerifyFast Technologies Pvt Ltd · GSTIN 07AAFCV5678K1Z2 (Delhi)
 Invoice No: VF-1029   Date: 02-Nov-2026   Period: October 2026
-Bill to: Acme Finserv Pvt Ltd
+Bill to: Acme Finserv Pvt Ltd · GSTIN 29AABCA1234F1Z5
+SAC: 998319
 
 1. Aadhaar OTP eKYC — 5,000 calls @ ₹3.00 = ₹15,000
 2. PAN verification — 5,000 @ ₹2.00 = ₹10,000
@@ -85,7 +87,8 @@ Bill to: Acme Finserv Pvt Ltd
 5. Platform & dashboard fee — 1 month = ₹7,500
 
 Subtotal: ₹2,37,900
-GST @18%: ₹42,822
+CGST @9%: ₹21,411
+SGST @9%: ₹21,411
 Total: ₹2,80,722`,
     usageByKeyword: [
       { match: /otp|aadhaar/i, qty: 5000 },

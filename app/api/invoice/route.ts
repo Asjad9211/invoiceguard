@@ -16,7 +16,10 @@ ${items}
 
 Return JSON: { "vendor": string, "invoiceNo": string, "date": string,
 "lines": [{ "description": string, "costItemId": string|null, "quantity": number, "rate": number, "amount": number }],
-"subtotal": number, "tax": number, "total": number }
+"subtotal": number, "tax": number, "total": number,
+"supplierGstin": string|null, "buyerGstin": string|null, "sac": string|null,
+"taxLines": [{ "type": "IGST"|"CGST"|"SGST"|"GST", "ratePct": number, "amount": number }] }
+Use "GST" type only if the invoice does not split the tax.
 Amounts in ₹ before tax per line.`,
       body
     );

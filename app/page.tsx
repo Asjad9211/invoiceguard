@@ -1,494 +1,301 @@
-"use client";
+import Link from "next/link";
+import { Logo, LogoMark } from "@/components/Logo";
 
-import { useEffect, useMemo, useState } from "react";
-import type { Agreement, CostItem, Invoice, Vendor } from "@/lib/types";
-import { SAMPLES, BENCHMARKS } from "@/lib/samples";
-import { checkInvoice, cliffInsight, cliffZones, costFor, fmtN, inr, round } from "@/lib/calc";
-
-type Step = 1 | 2 | 3;
-type SampleKey = keyof typeof SAMPLES;
-const STORE = "invoiceguard.v1";
-
-const EVENT_LABEL: Record<string, string> = {
-  sent: "Billed when sent",
-  delivered: "Billed when delivered",
-  attempted: "Billed per attempt",
-  per_call: "Billed per API call",
-  per_success: "Billed per success",
-  per_month: "Fixed per month",
-  unclear: "Billing event unclear",
+const I = {
+  doc: "M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M9 13h6M9 17h4",
+  user: "M20 21a8 8 0 0 0-16 0M12 13a5 5 0 1 0 0-10 5 5 0 0 0 0 10z",
+  check: "M9 12l2 2 4-4M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z",
+  scale: "M12 3v18M5 7h14M7 7l-4 8a4 4 0 0 0 8 0zM17 7l-4 8a4 4 0 0 0 8 0z",
+  receipt: "M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2zM9 8h6M9 12h6M9 16h3",
+  shield: "M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z",
+  arrow: "M5 12h14M13 6l6 6-6 6",
 };
-
-async function fileToDoc(f: File): Promise<{ text?: string; pdfBase64?: string }> {
-  if (f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf")) {
-    const buf = await f.arrayBuffer();
-    let bin = "";
-    const bytes = new Uint8Array(buf);
-    for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
-    return { pdfBase64: btoa(bin) };
-  }
-  return { text: await f.text() };
-}
-
-async function post<T>(url: string, body: unknown): Promise<T> {
-  const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-  const j = await r.json();
-  if (!r.ok || j.error) throw new Error(j.error || "Request failed");
-  return j as T;
-}
-
-function sampleQty(key: SampleKey, item: CostItem): number | undefined {
-  const hay = `${item.name} ${item.category} ${item.unit}`;
-  const isFixed = item.pricing.mode === "fixed" || item.billingEvent === "per_month";
-  if (isFixed) return 1;
-  for (const k of SAMPLES[key].usageByKeyword) {
-    if (/platform|fee/i.test(k.match.source)) continue;
-    if (k.match.test(hay)) return k.qty;
-  }
-  return undefined;
-}
-
-function rateText(c: CostItem) {
-  const s = c.pricing.slabs;
-  if (!s?.length) return "—";
-  if (c.pricing.mode === "fixed") return `${inr(s[0].rate)} / period`;
-  if (s.length === 1) return `${inr(s[0].rate)} / ${c.unit}`;
-  return s.map((x) => `${fmtN(x.from)}${x.to ? "–" + fmtN(x.to) : "+"}: ${inr(x.rate)}`).join(" · ");
-}
-
-export default function Home() {
-  const [vendors, setVendors] = useState<Vendor[]>([]);
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [step, setStep] = useState<Step>(1);
-  const [busy, setBusy] = useState<string | null>(null);
-  const [err, setErr] = useState<string | null>(null);
-  const [verdict, setVerdict] = useState<{ verdict: string; reasons: string[]; email: { subject: string; body: string } } | null>(null);
-  const [sampleOf, setSampleOf] = useState<Record<string, SampleKey>>({});
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORE);
-      if (raw) {
-        const s = JSON.parse(raw);
-        setVendors(s.vendors || []);
-        setSampleOf(s.sampleOf || {});
-        setActiveId(s.vendors?.[0]?.id ?? null);
-      }
-    } catch {}
-  }, []);
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORE, JSON.stringify({ vendors, sampleOf }));
-    } catch {}
-  }, [vendors, sampleOf]);
-
-  const v = vendors.find((x) => x.id === activeId) || null;
-  const update = (fn: (v: Vendor) => Vendor) => setVendors((all) => all.map((x) => (x.id === activeId ? fn(x) : x)));
-  const updateItem = (id: string, patch: Partial<CostItem>) =>
-    update((x) => ({ ...x, agreement: { ...x.agreement, costItems: x.agreement.costItems.map((c) => (c.id === id ? { ...c, ...patch } : c)) } }));
-
-  async function addAgreement(doc: { text?: string; pdfBase64?: string }, sample?: SampleKey) {
-    setErr(null);
-    setBusy("Reading agreement and extracting every cost…");
-    try {
-      const a = await post<Agreement>("/api/agreement", doc);
-      a.costItems = (a.costItems || []).map((c) => ({ ...c, questions: c.questions || [], sourceOfTruth: "manual" }));
-      const id = Math.random().toString(36).slice(2, 9);
-      setVendors((all) => [{ id, agreement: a, status: "setup" }, ...all]);
-      if (sample) setSampleOf((m) => ({ ...m, [id]: sample }));
-      setActiveId(id);
-      setStep(1);
-      setVerdict(null);
-    } catch (e) {
-      setErr(String(e));
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  async function addInvoice(doc: { text?: string; pdfBase64?: string }) {
-    if (!v) return;
-    setErr(null);
-    setBusy("Reading invoice and matching lines to the agreement…");
-    try {
-      const inv = await post<Invoice>("/api/invoice", { ...doc, costItems: v.agreement.costItems.map(({ id, name, unit }) => ({ id, name, unit })) });
-      update((x) => ({ ...x, invoice: inv, status: "ready" }));
-      setVerdict(null);
-    } catch (e) {
-      setErr(String(e));
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  const check = useMemo(() => (v?.invoice ? checkInvoice(v.invoice, v.agreement.costItems) : null), [v]);
-
-  async function runDispute() {
-    if (!v || !check) return;
-    setBusy("Drafting the dispute with evidence…");
-    try {
-      const res = await post<typeof verdict>("/api/explain", {
-        vendor: v.agreement.vendor,
-        invoice: { no: v.invoice?.invoiceNo, date: v.invoice?.date },
-        atRisk: check.atRisk,
-        lines: check.lines,
-        clauses: v.agreement.costItems.map((c) => ({ id: c.id, name: c.name, clause: c.clause, billingEvent: c.billingEvent, answers: c.questions.map((q) => `${q.text} → ${q.answer ?? "unanswered"}`) })),
-      });
-      setVerdict(res);
-      update((x) => ({ ...x, status: "disputed" }));
-    } catch (e) {
-      setErr(String(e));
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  function fillSampleUsage() {
-    if (!v) return;
-    const key = sampleOf[v.id];
-    if (!key) return;
-    update((x) => ({
-      ...x,
-      agreement: {
-        ...x.agreement,
-        costItems: x.agreement.costItems.map((c) => ({
-          ...c,
-          actualQty: c.actualQty ?? sampleQty(key, c) ?? 0,
-          owner: c.owner || (/(kyc|aadhaar|pan|face|video)/i.test(c.name + c.category) ? "Rohan (Onboarding PM)" : "Priya (Marketing Ops)"),
-          sourceNote: c.sourceNote || (c.pricing.mode === "fixed" ? "Agreement — fixed fee" : "Vendor dashboard export, cross-checked with our delivery logs"),
-        })),
-      },
-    }));
-  }
-
-  const items = v?.agreement.costItems || [];
-  const openQs = items.flatMap((c) => c.questions).filter((q) => !q.answer).length;
-  const setupDone = items.filter((c) => c.owner && c.actualQty !== undefined).length;
-  const notStated = items.flatMap((c) => c.questions.filter((q) => q.answer && /not stated/i.test(q.answer)).map((q) => ({ item: c.name, q: q.text })));
-
+function Icon({ d, className = "h-5 w-5" }: { d: string; className?: string }) {
   return (
-    <div className="flex h-dvh flex-col bg-zinc-50 text-[13px] text-zinc-900">
-      {/* top bar */}
-      <header className="flex h-11 shrink-0 items-center gap-3 border-b border-zinc-200 bg-white px-3">
-        <div className="flex items-center gap-1.5 font-semibold">
-          <span className="grid h-6 w-6 place-items-center rounded bg-emerald-600 text-[11px] font-bold text-white">IG</span>
-          InvoiceGuard
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d={d} />
+    </svg>
+  );
+}
+
+const STEPS = [
+  { n: "01", t: "Understand the agreement", d: "Upload any vendor agreement — PDF or text. Claude extracts every chargeable item: unit, rate, slabs, minimums, free tiers, and the exact clause. Vague terms become one-tap questions: sent or delivered? Per KYC step or per completed KYC?", icon: I.doc },
+  { n: "02", t: "Assign a source of truth", d: "Each cost gets one owner and one source they trust — a vendor dashboard export, your own logs, or an API (soon). No more “who checked this bill?”.", icon: I.user },
+  { n: "03", t: "Verify every invoice", d: "Upload or forward the invoice. Code — not AI — recomputes what you should pay from the agreement and verified usage, line by line, including GST. Approve in one click or dispute with a drafted email.", icon: I.receipt },
+  { n: "04", t: "Pay less next time", d: "Spot volume-slab traps, unused minimum commitments and above-market rates. See what verified partner vendors charge — benchmarks never use your data.", icon: I.scale },
+];
+
+const GST = [
+  ["GSTIN validity", "15-character format and checksum structure for supplier and buyer"],
+  ["IGST vs CGST + SGST", "State codes decide: inter-state must be IGST, intra-state must be CGST + SGST — wrong type blocks your input tax credit"],
+  ["Rate check", "Expected 18% on most digital services (SAC 9984/9983); flags 5%/12%/28% surprises"],
+  ["Tax on the right base", "GST recomputed on the verified amount, so overbilling isn't taxed twice"],
+  ["ITC readiness", "Buyer GSTIN present and correct, invoice number and date present — so you can claim credit"],
+];
+
+const ROLES = [
+  { r: "Admin", d: "Manages company, billing and users", p: [1, 1, 1, 1, 1] },
+  { r: "Approver", d: "Approves or disputes invoices", p: [1, 0, 1, 1, 1] },
+  { r: "Owner", d: "Verifies usage for assigned vendors", p: [1, 0, 1, 0, 1] },
+  { r: "Viewer", d: "Finance / audit read-only", p: [1, 0, 0, 0, 0] },
+];
+const PERMS = ["View", "Add vendors", "Verify usage", "Approve / dispute", "Comment"];
+
+export default function Landing() {
+  return (
+    <div className="bg-white text-ink">
+      {/* nav */}
+      <header className="sticky top-0 z-30 border-b border-line bg-white/85 backdrop-blur">
+        <div className="mx-auto flex h-14 max-w-6xl items-center gap-6 px-4">
+          <Link href="/" aria-label="InvoiceGuard home"><Logo /></Link>
+          <nav className="hidden gap-5 text-sm text-slate md:flex">
+            <a href="#how" className="hover:text-ink">How it works</a>
+            <a href="#gst" className="hover:text-ink">GST checks</a>
+            <a href="#teams" className="hover:text-ink">Teams & roles</a>
+            <a href="#pricing" className="hover:text-ink">Pricing</a>
+          </nav>
+          <div className="ml-auto flex items-center gap-2">
+            <Link href="/app" className="hidden rounded-md px-3 py-2 text-sm font-medium text-ink hover:bg-paper sm:block">Open demo</Link>
+            <Link href="/signup" className="rounded-md bg-ink px-3.5 py-2 text-sm font-medium text-white hover:bg-ink-2">Start free</Link>
+          </div>
         </div>
-        <span className="hidden text-zinc-500 sm:inline">Know what you should pay — before you pay it.</span>
-        <span className="ml-auto rounded bg-amber-100 px-1.5 py-0.5 text-[11px] text-amber-800">Demo · sample data is illustrative</span>
       </header>
 
-      <div className="flex min-h-0 flex-1 flex-col md:flex-row">
-        {/* vendor rail */}
-        <aside className="flex shrink-0 flex-col gap-1 border-b border-zinc-200 bg-white p-2 md:w-60 md:border-b-0 md:border-r">
-          <div className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">Vendors</div>
-          <label className="cursor-pointer rounded border border-dashed border-zinc-300 px-2 py-1.5 text-center hover:bg-zinc-50">
-            + Upload agreement (PDF / TXT)
-            <input type="file" accept=".pdf,.txt" className="hidden" onChange={async (e) => { const f = e.target.files?.[0]; if (f) addAgreement(await fileToDoc(f)); e.target.value = ""; }} />
-          </label>
-          <div className="flex gap-1">
-            {(Object.keys(SAMPLES) as SampleKey[]).map((k) => (
-              <button key={k} disabled={!!busy} onClick={() => addAgreement({ text: SAMPLES[k].agreement }, k)} className="flex-1 rounded bg-emerald-600 px-1.5 py-1 text-[12px] font-medium text-white hover:bg-emerald-700 disabled:opacity-50">
-                Try {k === "messaging" ? "Messaging" : "KYC"}
-              </button>
-            ))}
+      {/* hero */}
+      <section className="grid-bg border-b border-line">
+        <div className="mx-auto grid max-w-6xl gap-10 px-4 py-14 md:grid-cols-12 md:py-20">
+          <div className="md:col-span-6">
+            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-line bg-white px-3 py-1 font-mono text-[11px] uppercase tracking-wider text-slate">
+              <span className="h-1.5 w-1.5 rounded-full bg-cobalt" /> Vendor bill verification · India
+            </div>
+            <h1 className="font-display text-[40px] font-semibold leading-[1.02] tracking-tight md:text-[60px]">
+              Know what you<br />should pay —<br /><span className="text-cobalt">before you pay it.</span>
+            </h1>
+            <p className="mt-5 max-w-lg text-[17px] leading-relaxed text-slate">
+              InvoiceGuard reads your vendor agreements, makes every cost unambiguous, assigns who verifies it, and checks each invoice — usage, slabs and GST — before money leaves your account.
+            </p>
+            <div className="mt-7 flex flex-wrap gap-2">
+              <Link href="/signup" className="inline-flex items-center gap-2 rounded-md bg-cobalt px-5 py-3 font-medium text-white hover:bg-[#2148e0]">
+                Create your company <Icon d={I.arrow} className="h-4 w-4" />
+              </Link>
+              <Link href="/app" className="rounded-md border border-ink/15 bg-white px-5 py-3 font-medium hover:border-ink/40">Try with a sample agreement</Link>
+            </div>
+            <p className="mt-4 font-mono text-[11px] text-slate">No card · Built for SMS, WhatsApp, email, KYC, payment & cloud vendors</p>
           </div>
-          <div className="mt-1 flex gap-1 overflow-x-auto md:flex-col md:overflow-visible">
-            {vendors.map((x) => {
-              const r = x.invoice ? checkInvoice(x.invoice, x.agreement.costItems).atRisk : 0;
-              return (
-                <button key={x.id} onClick={() => { setActiveId(x.id); setVerdict(null); }} className={`shrink-0 rounded px-2 py-1.5 text-left ${x.id === activeId ? "bg-zinc-900 text-white" : "hover:bg-zinc-100"}`}>
-                  <div className="truncate font-medium">{x.agreement.vendor}</div>
-                  <div className={`text-[11px] ${x.id === activeId ? "text-zinc-300" : "text-zinc-500"}`}>
-                    {x.status === "approved" ? "✓ Approved" : x.status === "disputed" ? "Disputed" : r > 0 ? `${inr(r)} at risk` : `${x.agreement.costItems.length} cost items`}
+
+          {/* product preview */}
+          <div className="md:col-span-6">
+            <div className="rounded-xl border border-line bg-white shadow-[0_24px_60px_-30px_rgba(11,18,32,.35)]">
+              <div className="flex items-center gap-2 border-b border-line px-4 py-2.5 text-sm">
+                <span className="font-medium">PingWave Communications</span>
+                <span className="text-slate">· Oct 2026 invoice</span>
+                <span className="ml-auto rounded bg-risk-50 px-2 py-0.5 font-mono text-[11px] text-risk">DISPUTE</span>
+              </div>
+              <div className="grid grid-cols-3 divide-x divide-line border-b border-line">
+                {[["Invoiced", "₹95,960"], ["Should be", "₹77,240"], ["At risk", "₹18,720"]].map(([k, v], i) => (
+                  <div key={k} className="px-4 py-3">
+                    <div className="font-mono text-[10px] uppercase tracking-wider text-slate">{k}</div>
+                    <div className={`tnum font-display text-2xl font-semibold ${i === 2 ? "text-risk" : ""}`}>{v}</div>
                   </div>
-                </button>
-              );
-            })}
-          </div>
-          <div className="mt-auto hidden space-y-0.5 text-[11px] text-zinc-400 md:block">
-            <div>Coming soon: email inbox fetch · API integrations · Tally sync</div>
-          </div>
-        </aside>
-
-        {/* workspace */}
-        <main className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          {busy && <div className="shrink-0 animate-pulse bg-emerald-50 px-3 py-1.5 text-emerald-800">⏳ {busy}</div>}
-          {err && <div className="shrink-0 bg-red-50 px-3 py-1.5 text-red-700">{err} <button className="underline" onClick={() => setErr(null)}>dismiss</button></div>}
-
-          {!v ? (
-            <div className="grid flex-1 place-items-center p-6 text-center text-zinc-500">
-              <div className="max-w-md space-y-2">
-                <div className="text-base font-semibold text-zinc-800">Upload a vendor agreement. We'll tell you exactly what you pay for.</div>
-                <div>1 · Understand every cost &nbsp; 2 · Set who verifies it &nbsp; 3 · Approve invoices in a minute</div>
-                <div>Tap <b>Try Messaging</b> or <b>Try KYC</b> to see it with a sample.</div>
+                ))}
+              </div>
+              <ul className="divide-y divide-line text-sm">
+                {[
+                  ["Transactional SMS", "Billed 4,20,000 · verified 3,70,000", "+₹7,500"],
+                  ["WhatsApp utility", "Billed at marketing rate ₹0.88 vs ₹0.195", "+₹8,220"],
+                  ["Platform support", "Not in agreement — clause A.5", "+₹3,000"],
+                  ["GST", "IGST 18% correct · inter-state 27 → 29", "✓"],
+                ].map(([a, b, c]) => (
+                  <li key={a} className="flex items-start gap-3 px-4 py-2.5">
+                    <div className="flex-1">
+                      <div className="font-medium">{a}</div>
+                      <div className="text-[12px] text-slate">{b}</div>
+                    </div>
+                    <div className={`tnum font-mono text-[13px] ${c === "✓" ? "text-ok" : "text-risk"}`}>{c}</div>
+                  </li>
+                ))}
+              </ul>
+              <div className="flex gap-2 border-t border-line p-3">
+                <span className="flex-1 rounded-md bg-risk px-3 py-2 text-center text-sm font-medium text-white">Dispute ₹18,720</span>
+                <span className="flex-1 rounded-md border border-line px-3 py-2 text-center text-sm">Approve ₹77,240</span>
               </div>
             </div>
-          ) : (
-            <>
-              {/* vendor header + stepper */}
-              <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b border-zinc-200 bg-white px-3 py-1.5">
-                <div className="font-semibold">{v.agreement.vendor}</div>
-                <div className="text-zinc-500">{v.agreement.service} · {v.agreement.period}</div>
-                <div className="ml-auto flex overflow-hidden rounded border border-zinc-200">
-                  {([
-                    [1, `Understand${openQs ? ` (${openQs}?)` : " ✓"}`],
-                    [2, `Source of truth ${setupDone}/${items.length}`],
-                    [3, v.invoice ? (check && check.atRisk > 0 ? `Invoice · ${inr(check.atRisk)} at risk` : "Invoice ✓") : "Invoice"],
-                  ] as [Step, string][]).map(([s, label]) => (
-                    <button key={s} onClick={() => setStep(s)} className={`px-2.5 py-1 ${step === s ? "bg-zinc-900 text-white" : "bg-white hover:bg-zinc-50"}`}>
-                      {s}. {label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="min-h-0 flex-1 overflow-auto">
-                {step === 1 && (
-                  <div className="space-y-2 p-3">
-                    <p className="text-zinc-700">{v.agreement.summary}</p>
-                    {(v.agreement.risks?.length > 0 || notStated.length > 0) && (
-                      <div className="flex flex-wrap gap-1">
-                        {v.agreement.risks?.map((r, i) => <span key={i} className="rounded bg-orange-50 px-1.5 py-0.5 text-orange-800">⚠ {r}</span>)}
-                        {notStated.map((n, i) => <span key={"n" + i} className="rounded bg-red-50 px-1.5 py-0.5 text-red-800">Negotiate: {n.item} — not stated</span>)}
-                      </div>
-                    )}
-                    <table className="w-full border-collapse bg-white">
-                      <thead className="text-left text-[11px] uppercase text-zinc-500">
-                        <tr className="border-b border-zinc-200">
-                          <th className="px-2 py-1">Cost item</th>
-                          <th className="px-2 py-1">When you are charged</th>
-                          <th className="px-2 py-1">Rate</th>
-                          <th className="hidden px-2 py-1 lg:table-cell">Agreement clause</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {items.map((c) => {
-                          const zones = cliffZones(c);
-                          return (
-                            <tr key={c.id} className="border-b border-zinc-100 align-top">
-                              <td className="px-2 py-1.5">
-                                <div className="font-medium">{c.name}</div>
-                                <div className="text-[11px] text-zinc-500">{c.category} · per {c.unit}</div>
-                              </td>
-                              <td className="px-2 py-1.5">
-                                <span className={`mr-1 rounded px-1 py-0.5 text-[11px] ${c.billingEvent === "unclear" ? "bg-red-100 text-red-800" : "bg-zinc-100 text-zinc-700"}`}>{EVENT_LABEL[c.billingEvent] || c.billingEvent}</span>
-                                <span className="text-zinc-700">{c.plainEnglish}</span>
-                                {c.questions.map((q) => (
-                                  <div key={q.id} className="mt-1 rounded bg-sky-50 p-1.5">
-                                    <div className="text-sky-900">❓ {q.text}</div>
-                                    <div className="mt-1 flex flex-wrap gap-1">
-                                      {q.options.map((o) => (
-                                        <button key={o} onClick={() => updateItem(c.id, { questions: c.questions.map((x) => (x.id === q.id ? { ...x, answer: o } : x)) })} className={`rounded border px-1.5 py-0.5 text-[12px] ${q.answer === o ? "border-sky-700 bg-sky-700 text-white" : "border-sky-200 bg-white hover:bg-sky-100"}`}>
-                                          {o}
-                                        </button>
-                                      ))}
-                                    </div>
-                                  </div>
-                                ))}
-                              </td>
-                              <td className="px-2 py-1.5">
-                                <div>{rateText(c)}</div>
-                                <div className="text-[11px] text-zinc-500">
-                                  {c.pricing.mode === "volume" ? "Volume: one rate on all units" : c.pricing.mode === "graduated" ? "Graduated: rate per band" : ""}
-                                  {c.freeUnits ? ` · ${fmtN(c.freeUnits)} free` : ""}
-                                  {c.minCommitment ? ` · min ${inr(c.minCommitment)}` : ""}
-                                </div>
-                                {zones.map((z, i) => (
-                                  <div key={i} className="mt-1 rounded bg-amber-50 px-1.5 py-0.5 text-[11px] text-amber-900">
-                                    Slab trap: between {fmtN(z.start)} and {fmtN(z.slabStart - 1)} units you pay more than at {fmtN(z.slabStart)}.
-                                  </div>
-                                ))}
-                              </td>
-                              <td className="hidden max-w-xs px-2 py-1.5 text-[12px] text-zinc-500 lg:table-cell">{c.clause}</td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                    <Compare items={items} />
-                    <div className="flex justify-end">
-                      <button onClick={() => setStep(2)} className="rounded bg-zinc-900 px-3 py-1.5 font-medium text-white">Next: who verifies each cost →</button>
-                    </div>
-                  </div>
-                )}
-
-                {step === 2 && (
-                  <div className="space-y-2 p-3">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-zinc-700">For every cost, name one owner and the data you trust. Each month they confirm the real usage before anything is paid.</p>
-                      {sampleOf[v.id] && <button onClick={fillSampleUsage} className="ml-auto rounded border border-emerald-600 px-2 py-1 text-emerald-700 hover:bg-emerald-50">Fill sample owners &amp; usage</button>}
-                    </div>
-                    <table className="w-full border-collapse bg-white">
-                      <thead className="text-left text-[11px] uppercase text-zinc-500">
-                        <tr className="border-b border-zinc-200">
-                          <th className="px-2 py-1">Cost item</th>
-                          <th className="px-2 py-1">Owner</th>
-                          <th className="px-2 py-1">Source of truth</th>
-                          <th className="px-2 py-1">Verified usage (this month)</th>
-                          <th className="px-2 py-1 text-right">Should cost</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {items.map((c) => {
-                          const q = c.actualQty;
-                          const cl = q !== undefined ? cliffInsight(c, q) : null;
-                          return (
-                            <tr key={c.id} className="border-b border-zinc-100 align-top">
-                              <td className="px-2 py-1.5 font-medium">{c.name}<div className="text-[11px] font-normal text-zinc-500">{EVENT_LABEL[c.billingEvent]}</div></td>
-                              <td className="px-2 py-1.5"><input value={c.owner || ""} onChange={(e) => updateItem(c.id, { owner: e.target.value })} placeholder="Name / team" className="w-full rounded border border-zinc-200 px-1.5 py-1" /></td>
-                              <td className="px-2 py-1.5">
-                                <div className="flex gap-1">
-                                  <button onClick={() => updateItem(c.id, { sourceOfTruth: "manual" })} className={`rounded px-1.5 py-0.5 ${c.sourceOfTruth !== "api" ? "bg-zinc-900 text-white" : "bg-zinc-100"}`}>Owner verifies</button>
-                                  <button disabled title="Coming soon" className="rounded bg-zinc-100 px-1.5 py-0.5 text-zinc-400">API · soon</button>
-                                </div>
-                                <input value={c.sourceNote || ""} onChange={(e) => updateItem(c.id, { sourceNote: e.target.value })} placeholder="e.g. vendor dashboard export" className="mt-1 w-full rounded border border-zinc-200 px-1.5 py-1 text-[12px]" />
-                              </td>
-                              <td className="px-2 py-1.5">
-                                <input type="number" value={q ?? ""} onChange={(e) => updateItem(c.id, { actualQty: e.target.value === "" ? undefined : Number(e.target.value) })} placeholder={c.unit} className="w-32 rounded border border-zinc-200 px-1.5 py-1" />
-                                {cl && <div className="mt-1 rounded bg-amber-50 px-1.5 py-0.5 text-[11px] text-amber-900">At {fmtN(q!)} you pay {inr(cl.cost)}. At {fmtN(cl.nextQty)} you'd pay {inr(cl.nextCost)} — {inr(cl.saving)} less. Renegotiate to graduated slabs.</div>}
-                              </td>
-                              <td className="px-2 py-1.5 text-right font-medium">{q !== undefined ? inr(costFor(c, q)) : "—"}</td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                    <div className="flex items-center justify-end gap-2">
-                      <span className="text-zinc-600">Expected this month: <b>{inr(round(items.reduce((s, c) => s + (c.actualQty !== undefined ? costFor(c, c.actualQty) : 0), 0)))}</b> + GST</span>
-                      <button onClick={() => setStep(3)} className="rounded bg-zinc-900 px-3 py-1.5 font-medium text-white">Next: check invoice →</button>
-                    </div>
-                  </div>
-                )}
-
-                {step === 3 && (
-                  <div className="space-y-2 p-3">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <label className="cursor-pointer rounded border border-dashed border-zinc-300 bg-white px-2 py-1 hover:bg-zinc-50">
-                        Upload invoice (PDF / TXT)
-                        <input type="file" accept=".pdf,.txt" className="hidden" onChange={async (e) => { const f = e.target.files?.[0]; if (f) addInvoice(await fileToDoc(f)); e.target.value = ""; }} />
-                      </label>
-                      {sampleOf[v.id] && <button disabled={!!busy} onClick={() => addInvoice({ text: SAMPLES[sampleOf[v.id]].invoice })} className="rounded bg-emerald-600 px-2 py-1 font-medium text-white hover:bg-emerald-700 disabled:opacity-50">Use sample invoice</button>}
-                      <button disabled title="Coming soon" className="rounded bg-zinc-100 px-2 py-1 text-zinc-400">Fetch from email · soon</button>
-                      {items.some((c) => c.actualQty === undefined) && <span className="text-amber-700">Tip: add verified usage in step 2 for a full check.</span>}
-                    </div>
-
-                    {v.invoice && check && (
-                      <>
-                        <div className="flex flex-wrap items-stretch gap-2">
-                          <Stat label="Invoiced (pre-GST)" value={inr(v.invoice.subtotal)} />
-                          <Stat label="Should be" value={inr(check.expectedSubtotal)} />
-                          <Stat label="At risk" value={inr(check.atRisk)} tone={check.atRisk > 0 ? "bad" : "good"} />
-                          <div className="ml-auto flex items-center gap-2">
-                            {v.status === "approved" ? (
-                              <span className="rounded bg-emerald-100 px-3 py-2 font-semibold text-emerald-800">✓ Approved for payment</span>
-                            ) : check.atRisk > 0 ? (
-                              <>
-                                <button onClick={runDispute} disabled={!!busy} className="rounded bg-red-600 px-3 py-2 font-semibold text-white hover:bg-red-700 disabled:opacity-50">Dispute {inr(check.atRisk)}</button>
-                                <button onClick={() => update((x) => ({ ...x, status: "approved" }))} className="rounded border border-zinc-300 px-3 py-2 hover:bg-zinc-50">Approve {inr(check.expectedSubtotal)}</button>
-                              </>
-                            ) : (
-                              <button onClick={() => update((x) => ({ ...x, status: "approved" }))} className="rounded bg-emerald-600 px-3 py-2 font-semibold text-white">Approve {inr(v.invoice.total)}</button>
-                            )}
-                          </div>
-                        </div>
-                        <table className="w-full border-collapse bg-white">
-                          <thead className="text-left text-[11px] uppercase text-zinc-500">
-                            <tr className="border-b border-zinc-200">
-                              <th className="px-2 py-1">Invoice line</th>
-                              <th className="px-2 py-1 text-right">Billed qty</th>
-                              <th className="px-2 py-1 text-right">Verified qty</th>
-                              <th className="px-2 py-1 text-right">Billed</th>
-                              <th className="px-2 py-1 text-right">Should be</th>
-                              <th className="px-2 py-1 text-right">Difference</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {check.lines.map((l, i) => (
-                              <tr key={i} className={`border-b border-zinc-100 align-top ${l.diff && l.diff > 0 ? "bg-red-50/50" : ""}`}>
-                                <td className="px-2 py-1.5">
-                                  <div className="font-medium">{l.description}</div>
-                                  {l.flags.map((f, j) => <div key={j} className="text-[12px] text-red-700">• {f}</div>)}
-                                </td>
-                                <td className="px-2 py-1.5 text-right">{fmtN(l.invoicedQty)}</td>
-                                <td className="px-2 py-1.5 text-right">{l.actualQty !== null ? fmtN(l.actualQty) : "—"}</td>
-                                <td className="px-2 py-1.5 text-right">{inr(l.invoicedAmount)}</td>
-                                <td className="px-2 py-1.5 text-right">{l.expectedAmount !== null ? inr(l.expectedAmount) : "—"}</td>
-                                <td className={`px-2 py-1.5 text-right font-semibold ${l.diff && l.diff > 0 ? "text-red-700" : "text-emerald-700"}`}>{l.diff ? (l.diff > 0 ? "+" : "") + inr(l.diff) : "✓"}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                        <MinCheck items={items} expected={check.expectedSubtotal} />
-                      </>
-                    )}
-
-                    {verdict && (
-                      <div className="grid gap-2 md:grid-cols-2">
-                        <div className="rounded border border-zinc-200 bg-white p-2">
-                          <div className="mb-1 font-semibold">Verdict: <span className={verdict.verdict === "Pay" ? "text-emerald-700" : "text-red-700"}>{verdict.verdict}</span></div>
-                          <ul className="list-disc space-y-0.5 pl-4 text-zinc-700">{verdict.reasons.map((r, i) => <li key={i}>{r}</li>)}</ul>
-                        </div>
-                        <div className="rounded border border-zinc-200 bg-white p-2">
-                          <div className="mb-1 flex items-center font-semibold">Dispute email
-                            <button onClick={() => navigator.clipboard?.writeText(`Subject: ${verdict.email.subject}\n\n${verdict.email.body}`)} className="ml-auto rounded border border-zinc-300 px-1.5 py-0.5 text-[12px] font-normal">Copy</button>
-                          </div>
-                          <div className="text-[12px] font-medium">Subject: {verdict.email.subject}</div>
-                          <pre className="mt-1 max-h-60 overflow-auto whitespace-pre-wrap font-sans text-[12px] text-zinc-700">{verdict.email.body}</pre>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </>
-          )}
-        </main>
-      </div>
-    </div>
-  );
-}
-
-function Stat({ label, value, tone }: { label: string; value: string; tone?: "good" | "bad" }) {
-  return (
-    <div className={`rounded border px-3 py-1.5 ${tone === "bad" ? "border-red-200 bg-red-50" : tone === "good" ? "border-emerald-200 bg-emerald-50" : "border-zinc-200 bg-white"}`}>
-      <div className="text-[11px] uppercase text-zinc-500">{label}</div>
-      <div className={`text-lg font-bold ${tone === "bad" ? "text-red-700" : tone === "good" ? "text-emerald-700" : ""}`}>{value}</div>
-    </div>
-  );
-}
-
-function MinCheck({ items, expected }: { items: CostItem[]; expected: number }) {
-  const min = Math.max(0, ...items.map((c) => c.minCommitment ?? 0));
-  if (!min || expected >= min) return null;
-  return <div className="rounded bg-amber-50 px-2 py-1 text-amber-900">Minimum commitment {inr(min)}: usage-based charges are {inr(expected)}, so a shortfall of {inr(round(min - expected))} may be billed.</div>;
-}
-
-function Compare({ items }: { items: CostItem[] }) {
-  const rows = items
-    .map((c) => {
-      if (c.pricing.mode === "fixed") return null;
-      const b = BENCHMARKS.find((x) => x.match.test(`${c.name} ${c.category}`));
-      if (!b || !c.pricing.slabs?.length) return null;
-      const yours = c.pricing.slabs[0].rate;
-      if (b.rate >= yours) return { c, b, yours, saving: 0 };
-      const qty = c.actualQty;
-      const saving = qty ? round(costFor(c, qty) - qty * b.rate) : null;
-      return { c, b, yours, saving };
-    })
-    .filter(Boolean) as { c: CostItem; b: (typeof BENCHMARKS)[number]; yours: number; saving: number | null }[];
-  if (!rows.length) return null;
-  return (
-    <div className="rounded border border-zinc-200 bg-white p-2">
-      <div className="mb-1 flex items-center gap-2 font-semibold">Market comparison <span className="text-[11px] font-normal text-zinc-500">Illustrative rates from partner vendors. We never use your data to build benchmarks.</span></div>
-      <div className="flex flex-wrap gap-1.5">
-        {rows.map(({ c, b, yours, saving }) => (
-          <div key={c.id} className="rounded bg-zinc-50 px-2 py-1">
-            <span className="font-medium">{c.name}</span>: you {inr(yours)} · best {inr(b.rate)} ({b.vendor})
-            {b.rate < yours ? <span className="ml-1 text-emerald-700">{saving ? `save ~${inr(saving)}/mo` : `${Math.round((1 - b.rate / yours) * 100)}% cheaper`}</span> : <span className="ml-1 text-zinc-500">you're at market</span>}
+            <p className="mt-2 text-right font-mono text-[10px] text-slate">Illustrative data</p>
           </div>
-        ))}
-      </div>
+        </div>
+      </section>
+
+      {/* problem strip */}
+      <section className="border-b border-line">
+        <div className="mx-auto grid max-w-6xl grid-cols-1 divide-y divide-line px-4 md:grid-cols-3 md:divide-x md:divide-y-0">
+          {[
+            ["Signed once, never re-read", "Agreements say “per message processed”. Is that sent or delivered? Nobody knows when the bill arrives."],
+            ["No one owns the number", "Finance asks “is this right?”. Marketing has the dashboard. The invoice gets paid anyway."],
+            ["Slabs quietly cost more", "Under volume pricing, 9,500 calls at ₹1 cost more than 10,001 calls at ₹0.90."],
+          ].map(([t, d]) => (
+            <div key={t} className="py-7 md:px-6 first:md:pl-0">
+              <div className="font-display text-lg font-semibold">{t}</div>
+              <p className="mt-1.5 text-[15px] leading-relaxed text-slate">{d}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* how */}
+      <section id="how" className="border-b border-line">
+        <div className="mx-auto max-w-6xl px-4 py-16">
+          <SectionHead k="How it works" t="Four steps. Two of them happen once." />
+          <div className="mt-10 grid gap-px overflow-hidden rounded-xl border border-line bg-line md:grid-cols-4">
+            {STEPS.map((s) => (
+              <div key={s.n} className="bg-white p-6">
+                <div className="flex items-center justify-between text-cobalt">
+                  <Icon d={s.icon} className="h-6 w-6" />
+                  <span className="font-mono text-xs text-slate">{s.n}</span>
+                </div>
+                <div className="mt-5 font-display text-lg font-semibold leading-snug">{s.t}</div>
+                <p className="mt-2 text-sm leading-relaxed text-slate">{s.d}</p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-6 grid gap-4 rounded-xl bg-ink p-6 text-white md:grid-cols-3">
+            <div className="md:col-span-1">
+              <div className="font-mono text-[11px] uppercase tracking-wider text-cobalt-100">Why it's trustworthy</div>
+              <div className="mt-2 font-display text-xl font-semibold">AI reads. Code calculates.</div>
+            </div>
+            <p className="text-sm leading-relaxed text-white/75 md:col-span-2">
+              Claude interprets messy agreements and invoices into structured rules. Every rupee you see — slab maths, expected amount, GST, money at risk — is computed by deterministic code and linked back to the clause and the usage row it came from. You can explain every number to your CFO or auditor.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* GST */}
+      <section id="gst" className="border-b border-line bg-paper">
+        <div className="mx-auto grid max-w-6xl gap-10 px-4 py-16 md:grid-cols-12">
+          <div className="md:col-span-5">
+            <SectionHead k="GST checks — on by default" t="Every invoice is GST-checked before it reaches approval." />
+            <p className="mt-4 text-[15px] leading-relaxed text-slate">A wrong tax type or a missing GSTIN means lost input tax credit — real money even when the base amount is right. InvoiceGuard flags it and tells you exactly what to ask the vendor to fix.</p>
+          </div>
+          <div className="md:col-span-7">
+            <div className="overflow-hidden rounded-xl border border-line bg-white">
+              {GST.map(([t, d]) => (
+                <div key={t} className="flex gap-4 border-b border-line px-5 py-4 last:border-0">
+                  <Icon d={I.check} className="mt-0.5 h-5 w-5 shrink-0 text-cobalt" />
+                  <div>
+                    <div className="font-medium">{t}</div>
+                    <div className="text-sm text-slate">{d}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="mt-2 font-mono text-[11px] text-slate">Coming soon: GSTR-2B match to confirm the vendor actually filed.</p>
+          </div>
+        </div>
+      </section>
+
+      {/* teams */}
+      <section id="teams" className="border-b border-line">
+        <div className="mx-auto max-w-6xl px-4 py-16">
+          <SectionHead k="Teams & roles" t="Sign up your company in a minute. Invite the people who already own the data." />
+          <div className="mt-10 grid gap-6 md:grid-cols-12">
+            <ol className="space-y-4 md:col-span-4">
+              {[
+                ["Create your company", "Company name, GSTIN and your work email. You become the Admin."],
+                ["Invite your team", "Add approvers from finance, and owners from marketing, product or IT. Each sees only what they need."],
+                ["Assign vendors", "Owners get a nudge when an invoice needs their verified number. Approvers get one button."],
+              ].map(([t, d], i) => (
+                <li key={t} className="flex gap-3">
+                  <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full border border-ink/15 font-mono text-xs">{i + 1}</span>
+                  <div>
+                    <div className="font-medium">{t}</div>
+                    <div className="text-sm text-slate">{d}</div>
+                  </div>
+                </li>
+              ))}
+            </ol>
+            <div className="overflow-x-auto rounded-xl border border-line md:col-span-8">
+              <table className="w-full text-sm">
+                <thead className="bg-paper text-left">
+                  <tr>
+                    <th className="px-4 py-3 font-medium">Role</th>
+                    {PERMS.map((p) => <th key={p} className="px-3 py-3 text-center font-mono text-[11px] font-normal uppercase tracking-wide text-slate">{p}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {ROLES.map((r) => (
+                    <tr key={r.r} className="border-t border-line">
+                      <td className="px-4 py-3"><div className="font-medium">{r.r}</div><div className="text-[12px] text-slate">{r.d}</div></td>
+                      {r.p.map((v, i) => <td key={i} className="px-3 py-3 text-center">{v ? <span className="text-cobalt" aria-label="allowed">●</span> : <span className="text-line" aria-label="not allowed">○</span>}</td>)}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* pricing */}
+      <section id="pricing" className="border-b border-line bg-paper">
+        <div className="mx-auto max-w-6xl px-4 py-16">
+          <SectionHead k="Pricing" t="Pay for the vendors you protect — not for people who log in twice a month." />
+          <p className="mt-3 max-w-2xl text-[15px] text-slate">Approvers and owners use InvoiceGuard a few minutes a month, so seats are cheap. Value grows with the number of vendor relationships you verify, so that's what the plans scale on.</p>
+          <div className="mt-10 grid gap-4 md:grid-cols-3">
+            {[
+              { n: "Team", p: "$19", s: "/month", f: ["5 users included", "10 vendors", "Unlimited invoices", "GST checks", "+$2 / extra user / month", "+$3 / extra vendor / month"], cta: "Start free for 14 days", hi: false },
+              { n: "Growth", p: "$79", s: "/month", f: ["25 users included", "50 vendors", "Email inbox intake", "Approval routing", "+$1.50 / extra user", "Market benchmarks"], cta: "Start free for 14 days", hi: true },
+              { n: "Enterprise", p: "Custom", s: "", f: ["Unlimited users & vendors", "API usage integrations", "Tally / SAP / Zoho sync", "SSO & audit log", "GSTR-2B reconciliation", "Dedicated onboarding"], cta: "Talk to us", hi: false },
+            ].map((t) => (
+              <div key={t.n} className={`flex flex-col rounded-xl border p-6 ${t.hi ? "border-ink bg-ink text-white" : "border-line bg-white"}`}>
+                <div className="flex items-center justify-between">
+                  <div className="font-display text-lg font-semibold">{t.n}</div>
+                  {t.hi && <span className="rounded-full bg-cobalt px-2 py-0.5 font-mono text-[10px] uppercase">Most teams</span>}
+                </div>
+                <div className="mt-3 flex items-baseline gap-1"><span className="font-display text-4xl font-semibold">{t.p}</span><span className={t.hi ? "text-white/60" : "text-slate"}>{t.s}</span></div>
+                <ul className={`mt-5 flex-1 space-y-2 text-sm ${t.hi ? "text-white/80" : "text-slate"}`}>
+                  {t.f.map((f) => <li key={f} className="flex gap-2"><Icon d={I.check} className={`h-4 w-4 shrink-0 ${t.hi ? "text-cobalt-100" : "text-cobalt"}`} />{f}</li>)}
+                </ul>
+                <Link href="/signup" className={`mt-6 rounded-md px-4 py-2.5 text-center text-sm font-medium ${t.hi ? "bg-cobalt text-white hover:bg-[#2148e0]" : "border border-ink/15 hover:border-ink/40"}`}>{t.cta}</Link>
+              </div>
+            ))}
+          </div>
+          <div className="mt-6 flex flex-col gap-3 rounded-xl border border-dashed border-ink/20 bg-white p-5 md:flex-row md:items-center">
+            <Icon d={I.shield} className="h-6 w-6 shrink-0 text-cobalt" />
+            <div className="text-sm"><b>Savings guarantee.</b> <span className="text-slate">If InvoiceGuard doesn't flag at least 3× your subscription in billing issues within 90 days, we refund you.</span></div>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="bg-ink text-white">
+        <div className="mx-auto flex max-w-6xl flex-col items-start gap-6 px-4 py-16 md:flex-row md:items-center">
+          <div className="flex-1">
+            <div className="font-display text-3xl font-semibold tracking-tight md:text-4xl">Upload one agreement. See what you've been missing.</div>
+            <p className="mt-2 text-white/70">Takes under a minute. Your documents are only used to analyse your account.</p>
+          </div>
+          <div className="flex gap-2">
+            <Link href="/app" className="rounded-md bg-cobalt px-5 py-3 font-medium hover:bg-[#2148e0]">Analyse an agreement</Link>
+            <Link href="/signup" className="rounded-md border border-white/25 px-5 py-3 font-medium hover:border-white/60">Create company</Link>
+          </div>
+        </div>
+      </section>
+
+      <footer className="border-t border-white/10 bg-ink text-white/60">
+        <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-6 text-sm md:flex-row md:items-center">
+          <span className="inline-flex items-center gap-2 text-white"><LogoMark size={22} /> InvoiceGuard</span>
+          <span className="md:ml-4">Built at TPF Builders Day 2026 · RFB #60</span>
+          <span className="md:ml-auto font-mono text-[11px]">Demo build · sample data is illustrative</span>
+        </div>
+      </footer>
+    </div>
+  );
+}
+
+function SectionHead({ k, t }: { k: string; t: string }) {
+  return (
+    <div className="max-w-3xl">
+      <div className="font-mono text-[11px] uppercase tracking-wider text-cobalt">{k}</div>
+      <h2 className="mt-2 font-display text-3xl font-semibold leading-tight tracking-tight md:text-[40px]">{t}</h2>
     </div>
   );
 }

@@ -49,6 +49,7 @@ export interface Agreement {
   summary: string;
   costItems: CostItem[];
   risks: string[];
+  suggestions?: string[];
 }
 
 export interface InvoiceLine {
@@ -67,6 +68,10 @@ export interface Invoice {
   subtotal: number;
   tax: number;
   total: number;
+  supplierGstin?: string | null;
+  buyerGstin?: string | null;
+  sac?: string | null;
+  taxLines?: { type: "IGST" | "CGST" | "SGST" | "GST"; ratePct: number; amount: number }[];
 }
 
 export interface Vendor {

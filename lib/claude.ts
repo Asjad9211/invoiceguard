@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import mammoth from "mammoth";
+import { jsonrepair } from "jsonrepair";
 
 export const MODEL = process.env.CLAUDE_MODEL || "claude-sonnet-5-5";
 
@@ -22,7 +23,7 @@ export async function askJSON<T>(system: string, instruction: string, doc?: DocI
     content.push({ type: "document", source: { type: "base64", media_type: "application/pdf", data: doc.pdfBase64 } });
   }
   if (doc?.text) content.push({ type: "text", text: `<document>\n${doc.text}\n</document>` });
-  content.push({ type: "text", text: instruction + "\n\nCall the submit tool with the result object. Never use em dashes." });
+  content.push({ type: "text", text: instruction + "\n\nYou MUST respond by calling the submit tool with the result object. Never use em dashes." });
 
   let lastErr: unknown;
   for (let attempt = 0; attempt < 2; attempt++) {
@@ -32,12 +33,12 @@ export async function askJSON<T>(system: string, instruction: string, doc?: DocI
         max_tokens: 16000,
         system,
         tools: [{ name: "submit", description: "Submit the result as a JSON object in the exact shape requested.", input_schema: { type: "object", additionalProperties: true } }],
-        tool_choice: { type: "tool", name: "submit" },
         messages: [{ role: "user", content }],
       });
       const block = res.content.find((b): b is Anthropic.Messages.ToolUseBlock => b.type === "tool_use");
-      if (!block) throw new Error("No result returned");
-      return clean(block.input) as T;
+      if (block) return clean(block.input) as T;
+      const text = res.content.filter((b): b is Anthropic.Messages.TextBlock => b.type === "text").map((b) => b.text).join("");
+      return clean(JSON.parse(jsonrepair(extractJSON(text)))) as T;
     } catch (e) {
       lastErr = e;
     }

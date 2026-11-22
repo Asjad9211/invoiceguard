@@ -210,7 +210,7 @@ export default function Home() {
   const notStated = items.flatMap((c) => c.questions.filter((q) => q.answer && /not stated/i.test(q.answer)).map((q) => ({ item: c.name, q: q.text })));
 
   return (
-    <div className="flex min-h-dvh flex-col bg-[#f4efe6] text-[14px] text-ink md:h-dvh">
+    <div className="flex min-h-dvh flex-col overflow-x-hidden bg-[#f4efe6] text-[14px] text-ink md:h-dvh">
       {/* top bar */}
       <header className="flex h-14 shrink-0 items-center gap-3 border-b border-line bg-white px-4">
         <Link href="/" aria-label="Home"><Logo /></Link>
@@ -310,11 +310,11 @@ export default function Home() {
 
               <div className="min-h-0 flex-1 overflow-auto"><Safe key={v.id + step + (v.invoice?.invoiceNo || "")}>
                 {step === 1 && (
-                  <div className="space-y-4 p-5">
-                    <div className="rounded-2xl border border-line bg-white p-5">
+                  <div className="space-y-3 p-3 md:p-4">
+                    <div className="rounded-2xl border border-line bg-white p-4">
                       <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-slate">In plain words</div>
-                      <p className="mt-1.5 max-w-4xl font-serif text-[21px] leading-snug text-ink">{v.agreement.summary}</p>
-                      <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-4">
+                      <p className="mt-1 max-w-4xl font-serif text-[19px] leading-snug text-ink">{v.agreement.summary}</p>
+                      <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-4">
                         {[
                           [String(items.length), "charges found"],
                           [String((v.agreement.liabilities || []).filter((l) => l.severity === "high").length), "high liabilities"],
@@ -335,7 +335,7 @@ export default function Home() {
                       </div>
                     )}
                     <div className="px-1 pt-1 font-serif text-[22px]">Charges</div>
-                    <table className="w-full border-collapse overflow-hidden rounded-2xl bg-white ring-1 ring-line">
+                    <div className="overflow-x-auto rounded-2xl ring-1 ring-line"><table className="w-full min-w-[640px] border-collapse bg-white">
                       <thead className="text-left text-[11px] uppercase tracking-wide text-slate bg-paper">
                         <tr className="border-b border-zinc-200">
                           <th className="px-3 py-2">Cost item</th>
@@ -389,7 +389,7 @@ export default function Home() {
                           );
                         })}
                       </tbody>
-                    </table>
+                    </table></div>
                     <Liabilities list={v.agreement.liabilities} />
                     <Checklist result={v.agreement.checklist} list={checklist} save={saveChecklist} />
                     <Negotiate list={v.agreement.negotiate} />
@@ -404,7 +404,7 @@ export default function Home() {
                 )}
 
                 {step === 2 && (
-                  <div className="space-y-3 p-4">
+                  <div className="space-y-3 p-3 md:p-4">
                     <div className="flex flex-wrap items-center gap-2">
                       <div>
                         <div className="font-serif text-[26px] leading-none">Who checks what</div>
@@ -509,7 +509,7 @@ export default function Home() {
                 )}
 
                 {step === 3 && (
-                  <div className="space-y-3 p-4">
+                  <div className="space-y-3 p-3 md:p-4">
                     <div className="flex flex-wrap items-center gap-2">
                       <label className="cursor-pointer rounded-md bg-black px-4 py-2 font-medium text-white hover:bg-black/85">
                         {v.invoice ? "Upload next invoice" : "Upload invoice"}
@@ -537,7 +537,7 @@ export default function Home() {
                           <Stat label="Waiting for usage" value={`${check.pending} line${check.pending === 1 ? "" : "s"}`} tone={check.pending > 0 ? "warn" : undefined} />
                         </div>
                         <div className="overflow-hidden rounded-2xl border border-line bg-white">
-                          <table className="w-full border-collapse">
+                          <table className="w-full min-w-[720px] border-collapse">
                             <thead className="bg-paper text-left text-[11px] uppercase tracking-wide text-slate">
                               <tr>
                                 <th className="px-3 py-2">Charge</th>
@@ -592,7 +592,10 @@ export default function Home() {
                         />
                         <div className="flex flex-wrap items-center justify-end gap-2 rounded-2xl border border-line bg-white p-3">
                           {v.status === "approved" ? (
-                            <span className="rounded-md bg-ok-50 px-3 py-2 font-semibold text-ok">Approved for payment</span>
+                            <div className="w-full space-y-3">
+                              <div className="flex items-center gap-2"><span className="rounded-full bg-ok-50 px-3 py-1 font-semibold text-ok">Approved for payment</span><button onClick={() => update((x) => ({ ...x, status: "ready", approval: undefined }))} className="text-[12px] text-slate underline">Undo</button></div>
+                              <PaymentNote v={v} org={org} gstRate={v.invoice.subtotal ? v.invoice.tax / v.invoice.subtotal : 0} terms={v.agreement.keyTerms} openTeam={() => setTeamOpen(true)} />
+                            </div>
                           ) : (
                             <>
                               <span className="mr-auto text-slate">
@@ -600,7 +603,7 @@ export default function Home() {
                               </span>
                               
                               {(check.atRisk > 0 || check.unmatched > 0) && <button onClick={() => update((x) => ({ ...x, status: "disputed", disputes: [...(x.disputes || []).filter((d) => d.invoiceNo !== (x.invoice?.invoiceNo || "")), { invoiceNo: x.invoice?.invoiceNo || "", date: x.invoice?.date || "", amount: check.atRisk + check.unmatched, status: "open" }] }))} className="rounded-md bg-risk px-3 py-2 font-semibold text-white">Mark as disputed</button>}
-                              <button disabled={check.pending > 0} onClick={() => update((x) => ({ ...x, status: "approved" }))} className={`rounded-md px-3 py-2 font-semibold ${check.atRisk > 0 || check.unmatched > 0 ? "border border-line" : "bg-black text-white"} disabled:opacity-40`}>
+                              <button disabled={check.pending > 0} onClick={() => update((x) => ({ ...x, status: "approved", approval: { amount: check.atRisk > 0 ? check.expectedSubtotal : x.invoice!.subtotal, by: org.members[0]?.name || "You", on: new Date().toLocaleDateString("en-IN") } }))} className={`rounded-md px-3 py-2 font-semibold ${check.atRisk > 0 || check.unmatched > 0 ? "border border-line" : "bg-black text-white"} disabled:opacity-40`}>
                                 Approve {inr(check.atRisk > 0 ? check.expectedSubtotal : v.invoice.subtotal)} + GST
                               </button>
                             </>
@@ -802,12 +805,12 @@ function Reading({ label, file }: { label: string; file: string }) {
   const [i, setI] = useState(0);
   useEffect(() => { const t = setInterval(() => setI((x) => Math.min(x + 1, steps.length - 1)), 9000); return () => clearInterval(t); }, [steps.length]);
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-ink/40 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-xl bg-white p-5 shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-md min-w-0 rounded-2xl bg-white p-5 shadow-2xl">
         <div className="flex items-center gap-3">
           <div className="h-9 w-9 animate-spin rounded-full border-[3px] border-cobalt-100 border-t-cobalt" />
           <div className="min-w-0">
-            <div className="font-display text-lg font-semibold">{label.replace(/…$/, "")}</div>
+            <div className="font-display text-[17px] font-semibold leading-snug">{label.replace(/…$/, "")}</div>
             {file && <div className="truncate text-[13px] text-slate">{file}</div>}
           </div>
         </div>
@@ -957,13 +960,13 @@ function StateSelect({ value, onChange }: { value: PointStatus; onChange: (v: Po
   );
 }
 
-function EmailBox({ to, subject, body }: { to: string; subject: string; body: string }) {
+function EmailBox({ to, subject, body, mailTo = "" }: { to: string; subject: string; body: string; mailTo?: string }) {
   const [copied, setCopied] = useState(false);
   return (
     <div className="rounded-xl border border-line bg-white p-3">
       <div className="mb-1 flex items-center gap-2 font-semibold">Email to {to}
         <button onClick={() => { navigator.clipboard?.writeText(`Subject: ${subject}\n\n${body}`); setCopied(true); setTimeout(() => setCopied(false), 1500); }} className="ml-auto rounded-full border border-line px-3 py-1 text-[12px] font-normal">{copied ? "Copied" : "Copy"}</button>
-        <a href={`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`} className="rounded-full bg-ink px-3 py-1 text-[12px] font-medium text-white">Open in email</a>
+        <a href={`mailto:${mailTo}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`} className="rounded-full bg-ink px-3 py-1 text-[12px] font-medium text-white">Open in email</a>
       </div>
       <div className="text-[13px] font-medium">Subject: {subject}</div>
       <pre className="mt-1 max-h-80 overflow-auto whitespace-pre-wrap font-sans text-[13px] text-ink-2">{body}</pre>
@@ -1052,4 +1055,43 @@ function RemoveBtn({ onConfirm }: { onConfirm: () => void }) {
   return sure ? (
     <span className="whitespace-nowrap text-[13px]"><button onClick={onConfirm} className="font-medium text-risk">Yes, remove</button> · <button onClick={() => setSure(false)} className="text-slate">Cancel</button></span>
   ) : <button onClick={() => setSure(true)} className="text-[13px] text-slate hover:text-risk">Remove</button>;
+}
+
+function PaymentNote({ v, org, gstRate, terms, openTeam }: { v: Vendor; org: Org; gstRate: number; terms?: Agreement["keyTerms"]; openTeam: () => void }) {
+  const inv = v.invoice!;
+  const ap = v.approval;
+  const base = ap?.amount ?? inv.subtotal;
+  const gst = round(base * gstRate);
+  const pay = terms?.find((t) => t.kind === "payment" && t.days);
+  const due = pay && inv.date && !isNaN(new Date(inv.date).getTime()) ? new Date(new Date(inv.date).getTime() + (pay.days || 0) * 86400000).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : null;
+  const payers = org.members.filter((m) => m.role === "Approver" && m.email);
+  const held = round(inv.subtotal - base);
+  const resolved = Object.entries(v.issueState || {}).filter(([, s]) => s !== "open").length;
+  const subject = `Payment approval: ${v.agreement.vendor}, invoice ${inv.invoiceNo}, ${inr(round(base + gst))}`;
+  const body = `Hi${payers.length ? " " + payers.map((p) => p.name.split(" ")[0]).join(", ") : ""},
+
+Please process payment for the invoice below. It has been checked against the agreement and confirmed usage.
+
+Vendor: ${v.agreement.vendor}${inv.supplierGstin ? ` (GSTIN ${inv.supplierGstin})` : ""}
+Invoice: ${inv.invoiceNo}, dated ${inv.date}
+Approved amount: ${inr(base)} + GST ${inr(gst)} = ${inr(round(base + gst))}${held > 1 ? `\nHeld back: ${inr(held)} before GST, under dispute with the vendor` : ""}${due ? `\nPay by: ${due} (${pay!.label.toLowerCase()} as per agreement)` : ""}
+Checks done: rates against the agreement, usage confirmed by owners, GST type and arithmetic${resolved ? `, ${resolved} issue${resolved > 1 ? "s" : ""} reviewed` : ""}.
+
+Approved by ${ap?.by || "me"} on ${ap?.on || ""}.
+
+Thanks`;
+  return (
+    <div className="grid gap-3 lg:grid-cols-[1fr_1.4fr]">
+      <div className="rounded-xl border border-line bg-white p-3">
+        <div className="font-semibold">Send to payments</div>
+        {payers.length ? (
+          <ul className="mt-2 space-y-1">{payers.map((p) => <li key={p.id} className="flex items-center gap-2"><span className="grid h-6 w-6 place-items-center rounded-full bg-cobalt-50 text-[11px] font-semibold text-cobalt">{p.name.slice(0, 1)}</span>{p.name}<span className="text-slate">{p.email}</span></li>)}</ul>
+        ) : (
+          <div className="mt-1 text-[13px] text-slate">No one is set up to receive payment approvals. <button onClick={openTeam} className="font-medium text-cobalt underline">Add a teammate with the Approver role</button> and they will be added here automatically.</div>
+        )}
+        <div className="mt-3 rounded-lg bg-paper px-2.5 py-2 text-[12px] text-slate">Automatic email alerts to the payments team are coming soon. For now, open the draft in your email and send it.</div>
+      </div>
+      <EmailBox to={payers.length ? payers.map((p) => p.name).join(", ") : "your payments team"} subject={subject} body={body} mailTo={payers.map((p) => p.email).join(",")} />
+    </div>
+  );
 }

@@ -77,7 +77,7 @@ export default function Landing() {
 
       {/* hero */}
       <section className="spot relative">
-        <div className="mx-auto max-w-5xl px-5 pb-10 pt-20 text-center md:pt-28">
+        <div className="mx-auto max-w-5xl px-5 pb-10 pt-14 text-center md:pt-20">
           <div className="fadeup mx-auto mb-6 w-fit rounded-full border lux-line px-3.5 py-1 text-[12px] tracking-wide lux-muted">For finance and operations teams in India</div>
           <h1 className="fadeup font-serif text-[52px] leading-[0.98] tracking-tight md:text-[92px]">
             Every vendor bill,<br /><em className="text-gold">checked</em> before you pay.
@@ -91,14 +91,14 @@ export default function Landing() {
           </div>
           <p className="mt-5 text-[13px] lux-muted">Free for your first 3 vendors. No card needed.</p>
         </div>
-        <div className="mx-auto max-w-3xl px-5 pb-24">
+        <div className="mx-auto max-w-3xl px-5 pb-14">
           <Examples />
         </div>
       </section>
 
       {/* problems */}
       <section className="border-t lux-line">
-        <div className="mx-auto grid max-w-6xl gap-px px-5 py-24 md:grid-cols-3">
+        <div className="mx-auto grid max-w-6xl gap-px px-5 py-14 md:grid-cols-3">
           {[
             ["The agreement is vague.", "It says “per message processed”. Does that include failed messages? Most teams only find out when they argue about a bill."],
             ["Nobody owns the number.", "Finance has the invoice. Marketing or product has the usage. The bill often gets paid without anyone comparing the two."],
@@ -114,9 +114,9 @@ export default function Landing() {
 
       {/* how */}
       <section id="how" className="border-t lux-line">
-        <div className="mx-auto max-w-6xl px-5 py-24">
+        <div className="mx-auto max-w-6xl px-5 py-14">
           <Head k="How it works" t="Set up a vendor once." em="Check every invoice in minutes." />
-          <div className="mt-14 grid gap-4 md:grid-cols-2">
+          <div className="mt-8 grid gap-4 md:grid-cols-2">
             {STEPS.map((s) => (
               <div key={s.n} className="lux-card lift rounded-3xl p-8">
                 <div className="flex items-center gap-3">
@@ -138,9 +138,9 @@ export default function Landing() {
 
       {/* use cases */}
       <section id="use-cases" className="border-t lux-line">
-        <div className="mx-auto max-w-6xl px-5 py-24">
+        <div className="mx-auto max-w-6xl px-5 py-14">
           <Head k="Works with any agreement" t="If a vendor bills you against a contract," em="InvoiceGuard can read it." />
-          <div className="mt-14 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
             {CASES.map(([t, d]) => (
               <div key={t} className="lux-card lift rounded-2xl p-5">
                 <div className="text-[15px] font-medium">{t}</div>
@@ -153,7 +153,7 @@ export default function Landing() {
 
       {/* GST */}
       <section id="gst" className="border-t lux-line">
-        <div className="mx-auto grid max-w-6xl gap-12 px-5 py-24 md:grid-cols-2">
+        <div className="mx-auto grid max-w-6xl gap-12 px-5 py-14 md:grid-cols-2">
           <div>
             <Head k="GST" t="GST checked on" em="every invoice." />
             <p className="mt-5 text-[15px] leading-relaxed lux-muted">Even when the amount is right, the wrong tax type or a missing GSTIN can cost you input tax credit. We flag it and tell you what to ask the vendor to fix. These are checks to help your tax team, not a filing tool.</p>
@@ -171,9 +171,9 @@ export default function Landing() {
 
       {/* teams */}
       <section id="teams" className="border-t lux-line">
-        <div className="mx-auto max-w-6xl px-5 py-24">
+        <div className="mx-auto max-w-6xl px-5 py-14">
           <Head k="Teams" t="Bring in the people" em="who already have the numbers." />
-          <div className="mt-14 overflow-x-auto rounded-3xl border lux-line">
+          <div className="mt-8 overflow-x-auto rounded-3xl border lux-line">
             <table className="w-full text-[14px]">
               <thead><tr className="border-b lux-line text-left"><th className="px-6 py-4 font-medium">Role</th>{PERMS.map((p) => <th key={p} className="px-4 py-4 text-center text-[12px] font-normal lux-muted">{p}</th>)}</tr></thead>
               <tbody>
@@ -191,9 +191,9 @@ export default function Landing() {
 
       {/* pricing */}
       <section id="pricing" className="border-t lux-line">
-        <div className="mx-auto max-w-6xl px-5 py-24">
+        <div className="mx-auto max-w-6xl px-5 py-14">
           <Head k="Pricing" t="Start free." em="Pay as you add vendors." />
-          <div className="mt-14 grid gap-4 md:grid-cols-3">
+          <div className="mt-8 grid gap-4 md:grid-cols-3">
             {[
               { n: "Free", p: "₹0", s: "forever", f: ["Up to 3 vendors", "Up to 3 users", "Unlimited invoices", "GST checks and reminders"], cta: "Start free" },
               { n: "Team", p: "₹1,499", s: "a month", f: ["First month free", "Up to 15 vendors", "5 users included", "₹99 per extra user a month", "₹149 per extra vendor a month", "Usage file import"], cta: "Try a month free", hi: true },
@@ -214,7 +214,7 @@ export default function Landing() {
 
       {/* CTA */}
       <section className="spot border-t lux-line">
-        <div className="mx-auto max-w-4xl px-5 py-28 text-center">
+        <div className="mx-auto max-w-4xl px-5 py-16 text-center">
           <div className="font-serif text-[44px] leading-[1.02] md:text-[72px]">Try it on <em className="text-gold">one</em> agreement.</div>
           <p className="mt-4 lux-muted">Your documents are only used for your account.</p>
           <div className="mt-8 flex justify-center gap-3">

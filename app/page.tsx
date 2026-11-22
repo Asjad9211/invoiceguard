@@ -71,7 +71,7 @@ export default function Landing() {
           </nav>
           <div className="ml-auto flex items-center gap-3">
             <Link href="/app" className="hidden text-[13px] lux-muted hover:text-[#17140f] sm:block">Log in</Link>
-            <Link href="/signup" className="rounded-full bg-[#17140f] px-4 py-1.5 text-[13px] font-medium text-[#f4efe6] hover:bg-gold">Get started</Link>
+            <Link href="/signup" className="rounded-full bg-gold px-4 py-1.5 text-[13px] font-medium text-white hover:bg-[#1c3bb8]">Get started</Link>
           </div>
         </div>
       </header>
@@ -87,7 +87,7 @@ export default function Landing() {
             Upload the agreement once. Upload each invoice. See what you should have been charged, where the bill is off, and whether the GST is right.
           </p>
           <div className="mt-9 flex flex-wrap justify-center gap-3">
-            <Link href="/signup" className="rounded-full bg-[#17140f] px-6 py-3 text-[15px] font-medium text-[#f4efe6] hover:bg-gold">Start free</Link>
+            <Link href="/signup" className="rounded-full bg-gold px-6 py-3 text-[15px] font-medium text-white shadow-[0_10px_30px_-12px_rgba(36,72,216,.7)] hover:bg-[#1c3bb8]">Start free</Link>
             <Link href="/app" className="rounded-full border border-[#17140f]/25 px-6 py-3 text-[15px] font-medium hover:border-[#17140f]">Upload an agreement <span aria-hidden>→</span></Link>
           </div>
           <p className="mt-5 text-[13px] lux-muted">Free for your first 3 vendors. No card needed.</p>

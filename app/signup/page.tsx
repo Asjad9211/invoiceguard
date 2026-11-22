@@ -27,7 +27,7 @@ export default function Signup() {
 
   return (
     <div className="grid min-h-dvh md:grid-cols-2">
-      <div className="hidden flex-col justify-between bg-ink p-10 text-white md:flex">
+      <div className="hidden flex-col justify-between bg-[#0e1a46] p-10 text-white md:flex">
         <Link href="/"><Logo dark /></Link>
         <div>
           <div className="font-display text-4xl font-semibold leading-tight tracking-tight">Check every vendor bill<br />before you pay it.</div>

@@ -6,7 +6,7 @@ export const maxDuration = 30;
 export async function POST(req: Request) {
   const blocked = guard(req, 30);
   if (blocked) return blocked;
-  const key = process.env.ELEVENLABS_API_KEY;
+  const key = process.env.ELEVENLABS_API_KEY || process.env.Eleven_Labs || process.env.ELEVEN_LABS;
   if (!key) return Response.json({ error: "no-key" }, { status: 501 });
   const { text } = (await req.json()) as { text: string };
   if (!text?.trim()) return Response.json({ error: "empty" }, { status: 400 });

@@ -238,7 +238,7 @@ export default function Home() {
           <button onClick={() => setTeamOpen(true)} className="flex items-center gap-1.5 rounded-md border border-line px-2 py-1 hover:bg-paper">
             <span className="grid h-5 w-5 place-items-center rounded-full bg-ink text-[10px] font-semibold text-white">{org.name.slice(0, 1)}</span>
             <span className="hidden max-w-[140px] truncate font-medium sm:inline">{org.name}</span>
-            <span className="text-slate">· Team {org.members.length}</span>
+            <span className="hidden text-slate sm:inline">· Team {org.members.length}</span>
           </button>
         </div>
       </header>
@@ -247,23 +247,23 @@ export default function Home() {
 
       <div className="flex min-h-0 flex-1 flex-col md:flex-row">
         {/* vendor rail */}
-        <aside className="flex shrink-0 flex-col gap-1 bg-[#17140f] p-3 text-white md:w-64">
+        <aside className="flex shrink-0 flex-col gap-1 bg-[#17140f] p-2 text-white md:w-64 md:p-3">
           <label className="flex cursor-pointer items-center justify-center gap-2 rounded-full bg-white px-3 py-2.5 font-medium text-black hover:bg-white/90">
             <span className="text-lg leading-none">+</span> Add vendor
             <input type="file" accept=".pdf,.docx,.txt,.png,.jpg,.jpeg,.webp" className="hidden" onChange={async (e) => { const f = e.target.files?.[0]; e.target.value = ""; if (!f) return; try { setStage(f.name); addAgreement(await fileToDoc(f)); } catch (x) { setErr(String(x)); } }} />
           </label>
-          <div className="px-1 pb-1 text-center text-[11px] text-white/50">Agreement as PDF, Word, scan or photo</div>
-          <button onClick={() => setActiveId(null)} className={`mt-2 flex items-center gap-2 rounded-lg px-2.5 py-2 text-left font-medium ${activeId === null ? "bg-white/10" : "text-white/70 hover:bg-white/5 hover:text-white"}`}>
+          <div className="hidden px-1 pb-1 text-center text-[11px] text-white/50 md:block">Agreement as PDF, Word, scan or photo</div>
+          <button onClick={() => setActiveId(null)} className={`mt-1 flex items-center gap-2 rounded-lg px-2.5 py-2 text-left font-medium md:mt-2 ${activeId === null ? "bg-white/10" : "text-white/70 hover:bg-white/5 hover:text-white"}`}>
             <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z" /></svg> Dashboard
           </button>
-          <div className="mt-3 px-2.5 text-[11px] font-medium uppercase tracking-wider text-white/40">Vendors · {vendors.length}</div>
+          <div className="mt-3 hidden px-2.5 text-[11px] font-medium uppercase tracking-wider text-white/40 md:block">Vendors · {vendors.length}</div>
           <div className="flex gap-1 overflow-x-auto md:flex-col md:overflow-visible">
             {vendors.map((x) => {
               const ch = x.invoice ? checkInvoice(x.invoice, x.agreement.costItems) : null;
               const dot = x.status === "approved" ? "bg-ok" : x.status === "disputed" || (ch && ch.atRisk > 0) ? "bg-risk" : ch && ch.pending ? "bg-amber" : "bg-white/30";
               const sub = x.status === "approved" ? "Approved" : x.status === "disputed" ? "Disputed" : ch && ch.atRisk > 0 ? `${inr(ch.atRisk)} overbilled` : ch && ch.pending ? "Waiting for usage" : x.invoice ? "To review" : `${x.agreement.costItems.length} charges · no invoice`;
               return (
-                <button key={x.id} onClick={() => setActiveId(x.id)} className={`flex shrink-0 items-start gap-2 rounded-lg px-2.5 py-2 text-left ${x.id === activeId ? "bg-white/10" : "hover:bg-white/5"}`}>
+                <button key={x.id} onClick={() => setActiveId(x.id)} className={`flex max-w-[70vw] shrink-0 items-start gap-2 rounded-lg px-2.5 py-2 text-left md:max-w-none ${x.id === activeId ? "bg-white/10" : "hover:bg-white/5"}`}>
                   <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${dot}`} />
                   <span className="min-w-0"><span className="block truncate font-medium">{x.agreement.vendor}</span><span className="block text-[12px] text-white/55">{sub}</span></span>
                 </button>
@@ -287,7 +287,7 @@ export default function Home() {
             <>
               {/* vendor header + stepper */}
               <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b border-zinc-200 bg-white px-3 py-1.5">
-                <div className="flex items-center gap-2"><span className="grid h-8 w-8 place-items-center rounded-lg bg-black font-serif text-sm font-bold text-white">{v.agreement.vendor.slice(0, 1)}</span><span className="font-serif text-[24px] leading-none">{v.agreement.vendor}</span></div>
+                <div className="flex items-center gap-2"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-black font-serif text-sm font-bold text-white">{v.agreement.vendor.slice(0, 1)}</span><span className="line-clamp-2 font-serif text-[20px] leading-tight md:text-[24px]">{v.agreement.vendor}</span></div>
                 <div className="text-zinc-500">{v.agreement.service} · {v.agreement.period}</div>
                 <div className="flex items-center gap-2 text-[12px]">
                   <span className="rounded-full bg-paper px-2 py-0.5 text-slate">{(v.agreementVersions || []).length > 1 ? `Using: ${v.agreementVersions![v.agreementVersions!.length - 1].label} (${v.agreementVersions![v.agreementVersions!.length - 1].date})` : "Using: first upload"}</span>
@@ -308,7 +308,7 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="min-h-0 flex-1 overflow-auto"><Safe key={v.id + step + (v.invoice?.invoiceNo || "")}>
+              <div className="md:min-h-0 md:flex-1 md:overflow-auto"><Safe key={v.id + step + (v.invoice?.invoiceNo || "")}>
                 {step === 1 && (
                   <div className="space-y-3 p-3 md:p-4">
                     <div className="rounded-2xl border border-line bg-white p-4">
@@ -896,7 +896,7 @@ function Dashboard({ vendors, open, setDispute, remove }: { vendors: Vendor[]; o
   const openDisputes = vendors.flatMap((v) => v.disputes || []).filter((d) => d.status === "open");
   const recovered = vendors.flatMap((v) => v.disputes || []).filter((d) => d.status === "credit_note" || d.status === "corrected").reduce((s, d) => s + d.amount, 0);
   return (
-    <div className="min-h-0 flex-1 space-y-3 overflow-auto p-4">
+    <div className="space-y-3 p-3 md:min-h-0 md:flex-1 md:overflow-auto md:p-4">
       <div className="font-serif text-[32px] leading-none">All vendors</div>
       <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
         <Stat label="Vendors" value={String(vendors.length)} />

@@ -11,7 +11,7 @@ Write in plain, simple English like a careful finance colleague. Short sentences
 
 const INSTRUCTION = `Read the vendor agreement and return JSON with this exact shape:
 {
-  "vendor": string,
+  "vendor": string,                // short name of the other party only, e.g. "Signzy Technologies" or "Ranjan Bhattacharya". No address, role or brackets.
   "service": string,               // e.g. "SMS, WhatsApp and Email messaging"
   "period": string,                // billing cycle, e.g. "Monthly"
   "summary": string,               // 2 sentences, plain English, what you pay for

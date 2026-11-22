@@ -195,6 +195,32 @@ export default function Home() {
     }
   }
 
+  // One-tap sample: real AI reads the sample agreement, then the invoice, then the usage file.
+  const [sample, setSample] = useState<null | "invoice" | "usage">(null);
+  async function sampleFile(path: string, type: string) {
+    const r = await fetch(path);
+    return new File([await r.blob()], path.split("/").pop() || "sample", { type });
+  }
+  async function loadSample() {
+    try {
+      const f = await sampleFile("/samples/nimbus-kyc-agreement.pdf", "application/pdf");
+      setStage(f.name); setSample("invoice");
+      await addAgreement(await fileToDoc(f));
+    } catch (x) { setSample(null); setErr(String(x)); }
+  }
+  useEffect(() => {
+    if (!sample || busy) return;
+    if (err) { setSample(null); return; }
+    if (sample === "invoice" && v && !v.invoice) {
+      setSample("usage");
+      (async () => { const f = await sampleFile("/samples/nimbus-kyc-invoice-oct-2026.pdf", "application/pdf"); setStage(f.name); setStep(3); await addInvoice(await fileToDoc(f)); })().catch((x) => setErr(String(x)));
+    } else if (sample === "usage" && v?.invoice) {
+      setSample(null);
+      fetch("/samples/nimbus-usage-oct-2026.csv").then((r) => r.text()).then((t) => importUsage(t, "nimbus-usage-oct-2026.csv")).then(() => setStep(3)).catch((x) => setErr(String(x)));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sample, busy, v, err]);
+
   const check = useMemo(() => (v?.invoice ? checkInvoice(v.invoice, v.agreement.costItems) : null), [v]);
   const missingUsage = check ? check.pending : 0;
   const [excReason, setExcReason] = useState("");
@@ -262,6 +288,7 @@ export default function Home() {
             <input type="file" accept=".pdf,.docx,.txt,.png,.jpg,.jpeg,.webp" className="hidden" onChange={async (e) => { const f = e.target.files?.[0]; e.target.value = ""; if (!f) return; try { setStage(f.name); addAgreement(await fileToDoc(f)); } catch (x) { setErr(String(x)); } }} />
           </label>
           <div className="hidden px-1 pb-1 text-center text-[11px] text-white/50 md:block">Agreement as PDF, Word, scan or photo</div>
+          {!personal && <button onClick={loadSample} disabled={!!busy} className="rounded-full border border-white/25 px-3 py-2 text-[13px] font-medium text-white/90 hover:bg-white/10 disabled:opacity-50">Try with a sample vendor</button>}
           <button onClick={() => setActiveId(null)} className={`mt-1 flex items-center gap-2 rounded-lg px-2.5 py-2 text-left font-medium md:mt-2 ${activeId === null ? "bg-white/10" : "text-white/70 hover:bg-white/5 hover:text-white"}`}>
             <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z" /></svg> Dashboard
           </button>
@@ -298,7 +325,7 @@ export default function Home() {
           {err && <div className="shrink-0 bg-red-50 px-3 py-1.5 text-red-700">{err} <button className="underline" onClick={() => setErr(null)}>dismiss</button></div>}
 
           {!v ? (
-            <Dashboard personal={personal} vendors={vendors} open={(id) => { setActiveId(id); setStep(3); }} setDispute={(vid, idx, status) => setVendors((all) => all.map((x) => x.id === vid ? { ...x, disputes: (x.disputes || []).map((d, k) => k === idx ? { ...d, status } : d) } : x))} remove={(id) => setVendors((all) => all.filter((x) => x.id !== id))} />
+            <Dashboard personal={personal} onSample={loadSample} vendors={vendors} open={(id) => { setActiveId(id); setStep(3); }} setDispute={(vid, idx, status) => setVendors((all) => all.map((x) => x.id === vid ? { ...x, disputes: (x.disputes || []).map((d, k) => k === idx ? { ...d, status } : d) } : x))} remove={(id) => setVendors((all) => all.filter((x) => x.id !== id))} />
           ) : (
             <>
               {/* vendor header + stepper */}
@@ -911,12 +938,21 @@ function Checklist({ result, list, save }: { result?: Agreement["checklist"]; li
   );
 }
 
-function Dashboard({ personal, vendors, open, setDispute, remove }: { personal?: boolean; vendors: Vendor[]; open: (id: string) => void; setDispute: (vid: string, idx: number, s: NonNullable<Vendor["disputes"]>[number]["status"]) => void; remove: (id: string) => void }) {
+function Dashboard({ personal, onSample, vendors, open, setDispute, remove }: { personal?: boolean; onSample?: () => void; vendors: Vendor[]; open: (id: string) => void; setDispute: (vid: string, idx: number, s: NonNullable<Vendor["disputes"]>[number]["status"]) => void; remove: (id: string) => void }) {
   if (!vendors.length) return (
     <div className="flex flex-1 items-center justify-center p-4 md:p-8">
       <div className="w-full max-w-2xl">
         <div className="font-serif text-[30px] leading-tight text-ink md:text-[38px]">{personal ? "Add your first agreement" : "Add your first vendor"}</div>
         <p className="mt-2 text-slate">Three steps. The first one takes about a minute while we read the document.</p>
+        {!personal && onSample && (
+          <div className="mt-5 flex flex-wrap items-center gap-3 rounded-2xl border-2 border-gold bg-white p-4">
+            <div className="flex-1 min-w-[220px]">
+              <div className="font-semibold">No files handy? Try a sample vendor.</div>
+              <div className="text-[13px] text-slate">Loads a made-up KYC vendor&apos;s agreement, invoice and usage report, and checks them for real. About a minute.</div>
+            </div>
+            <button onClick={onSample} className="rounded-full bg-gold px-5 py-2.5 font-medium text-white hover:bg-[#1c3bb8]">Try with sample vendor</button>
+          </div>
+        )}
         <ol className="mt-5 grid gap-3 md:grid-cols-3">
           {[
             ["Upload the agreement", "PDF, Word, a scan or a photo. Use “Add vendor” on the left."],
